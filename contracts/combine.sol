@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 interface iMasterChef{
      function pendingCake(uint256 _pid, address _user) external view returns (uint256);
@@ -30,7 +32,7 @@ interface iLPToken{
     function approve(address spender, uint value) external returns (bool);    
 }
 
-contract combineApp {
+contract combineApp is Ownable, AccessControl{
     uint public poolId;
     address private chefContract;
     address private routeContract;
@@ -39,8 +41,7 @@ contract combineApp {
     address public lpContract;
     address public token0;
     address public token1;
-    address public owner;
-
+    
     uint public holdBack;
 
     uint256 constant MAX_INT = type(uint).max;
@@ -53,16 +54,18 @@ contract combineApp {
     event Received(address sender, uint amount);
     event NewPool(uint oldPool, uint newPool);
     event LiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
-    
-    modifier ownerOnly {
-        require(owner == msg.sender,"Restricted Function");
-        _;
-    }
+
+    bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
 //    constructor (uint _poolId, uint _holdback, address _chefContract, address _routeContract, address _rewardToken) {
-    constructor(uint _poolId) payable {
+    constructor(uint _poolId, address _harvester) payable {
+        if (_harvester == address(0)) {
+            _harvester = msg.sender;
+        }
+        _setupRole(HARVESTER, _harvester);
+        _setupRole(DEFAULT_ADMIN_ROLE,owner());
+
         holdBack = 1000; //_holdback 10%
-        owner = msg.sender;
         
         chefContract = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; //_chefContract;
         routeContract = 0x10ED43C718714eb63d5aA57B78B54704E256024E; //_routeContract;
@@ -108,7 +111,8 @@ contract combineApp {
         iLPToken(lpContract).approve(routeContract,MAX_INT);        
     }
 
-    function swapPool(uint _newPool) public ownerOnly {
+    function swapPool(uint _newPool) public {
+        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to Swap");
         uint oldPool = poolId;
         
         removeLiquidity();
@@ -132,38 +136,40 @@ contract combineApp {
         return iMasterChef(chefContract).pendingCake(poolId,address(this));
     }
     
-    function liquidate() public ownerOnly {
+    function liquidate() public onlyOwner {
         removeLiquidity();
         revertBalance();        
         uint _total = address(this).balance;
         
-        payable(owner).transfer(_total);
+        payable(owner()).transfer(_total);
         emit uintLog(address(this),"Liquidate Total",_total);
             
     }
     
-    function myBalance() public view returns (uint) {
+    function myBalance() public view onlyOwner returns (uint) {
         return address(this).balance;
     }
     
-    function userInfo() public view returns (uint,uint) {
+    function userInfo() public view onlyOwner returns (uint,uint) {
         (uint a, uint b) = iMasterChef(chefContract).userInfo(poolId,address(this));
         return (a,b);
     }
     
-    function setHoldBack(uint _holdback) public ownerOnly {
+    function setHoldBack(uint _holdback) public onlyOwner {
         holdBack = _holdback;
         emit uintLog(address(this),"holdback",_holdback);
     }
     
-    function sendHoldBack() public ownerOnly{
+    function sendHoldBack() public onlyOwner{
         uint bal = address(this).balance;
         require(bal > 0,"Nothing to send");
-        payable(owner).transfer(bal);
-        emit uintLog(owner,"Transferred holdback",bal);
+        payable(owner()).transfer(bal);
+        emit uintLog(owner(),"Transferred holdback",bal);
     }
     
-    function harvest() public ownerOnly {
+    function harvest() public {
+        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to harvest");
+
         uint split = do_harvest();
         
         uint amount0 = ERC20(token0).balanceOf(address(this));
@@ -216,6 +222,7 @@ contract combineApp {
         uint amountA;
         uint amountB;
         uint liquidity;
+        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to Liquidate");
 
         if (token1 == WBNB_ADDR) {
             (amountA, amountB, liquidity) = iRouter(routeContract).addLiquidityETH{value: amount1}(token0, amount0, 0,0, address(this), block.timestamp);
@@ -229,6 +236,8 @@ contract combineApp {
     }
     
     function swap(uint amountIn, uint slippage, address[] memory path) private returns (uint){
+        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to swap");
+
         require(amountIn > 0, "Amount for swap required");
         require(slippage > 0, "Slippage required" );
         
@@ -246,7 +255,7 @@ contract combineApp {
             emit uintLog(address(path[1]),"swapExactETHForTokens",amounts);
         }
         else {
-            amounts = iRouter(routeContract).swapExactTokensForTokens(amountIn, amountOutMin,path,owner,deadline);
+            amounts = iRouter(routeContract).swapExactTokensForTokens(amountIn, amountOutMin,path,address(this),deadline);
             emit uintLog(address(path[1]),"swapExactTokensForTokens",amounts);
         }
         emit uintLog(address(this),"Balance",address(this).balance);
@@ -292,7 +301,7 @@ contract combineApp {
         
         if (holdbackAmount > 0) {
             uint _holdbackAmount = swap(holdbackAmount, 1000, wbnb_path);
-            payable(owner).transfer(_holdbackAmount);
+            payable(owner()).transfer(_holdbackAmount);
         }
 
         return split;
