@@ -62,16 +62,14 @@ contract combineApp is Ownable, AccessControl{
 
     constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) //, uint _holdback, address _chefContract, address _routeContract, address _rewardToken) 
     payable {
-        harvester = (_harvester == address(0)) ?msg.sender : _harvester;
-        feeCollector = (_feeCollector == address(0)) ?msg.sender : _feeCollector;
-        fee = (_fee == 0) ? 2 * (10*18) : _fee;
+        harvester = (_harvester == address(0)) ? msg.sender : _harvester;
+        feeCollector = (_feeCollector == address(0)) ? msg.sender : _feeCollector;
+        fee = (_fee == 0) ? 2 * (10**18) : _fee;
 
         _setupRole(HARVESTER, _harvester);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
 
         holdBack = 1000; //_holdback 10%
-        fee = _fee;
-        feeCollector = _feeCollector;
         
         chefContract = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; //_chefContract;
         routeContract = 0x10ED43C718714eb63d5aA57B78B54704E256024E; //_routeContract;
