@@ -38,11 +38,13 @@ contract combineApp is Ownable, AccessControl{
     address private routeContract;
     address private factoryContract;
     address private rewardToken;
+    address private feeCollector;
     address public lpContract;
     address public token0;
     address public token1;
     
     uint public holdBack;
+    uint fee;
 
     uint256 constant MAX_INT = type(uint).max;
     address WBNB_ADDR = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
@@ -57,15 +59,19 @@ contract combineApp is Ownable, AccessControl{
 
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
-//    constructor (uint _poolId, uint _holdback, address _chefContract, address _routeContract, address _rewardToken) {
-    constructor(uint _poolId, address _harvester) payable {
-        if (_harvester == address(0)) {
-            _harvester = msg.sender;
-        }
+
+    constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) //, uint _holdback, address _chefContract, address _routeContract, address _rewardToken) 
+    payable {
+        harvester = (_harvester == address(0)) ?msg.sender : _harvester;
+        feeCollector = (_feeCollector == address(0)) ?msg.sender : _feeCollector;
+        fee = (_fee == 0) ? 2 * (10*18) : _fee;
+
         _setupRole(HARVESTER, _harvester);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
 
         holdBack = 1000; //_holdback 10%
+        fee = _fee;
+        feeCollector = _feeCollector;
         
         chefContract = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; //_chefContract;
         routeContract = 0x10ED43C718714eb63d5aA57B78B54704E256024E; //_routeContract;
@@ -73,6 +79,7 @@ contract combineApp is Ownable, AccessControl{
         rewardToken = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82; //_rewardToken;
         
         setLP(_poolId);
+        ERC20(rewardToken).approve(address(this),MAX_INT);
         
         if (msg.value > 0) {
             addFunds(msg.value);
@@ -98,16 +105,11 @@ contract combineApp is Ownable, AccessControl{
         token0 = iLPToken(lpContract).token0();
         token1 = iLPToken(lpContract).token1();
 
-        ERC20(token0).approve(routeContract,0);
         ERC20(token0).approve(routeContract,MAX_INT);
-        ERC20(token1).approve(routeContract,0);
         ERC20(token1).approve(routeContract,MAX_INT);
         
-        iLPToken(lpContract).approve(address(this),0);
         iLPToken(lpContract).approve(address(this),MAX_INT);
-        iLPToken(lpContract).approve(chefContract,0);
         iLPToken(lpContract).approve(chefContract,MAX_INT);        
-        iLPToken(lpContract).approve(routeContract,0);
         iLPToken(lpContract).approve(routeContract,MAX_INT);        
     }
 
@@ -137,6 +139,7 @@ contract combineApp is Ownable, AccessControl{
     }
     
     function liquidate() public onlyOwner {
+        do_harvest();
         removeLiquidity();
         revertBalance();        
         uint _total = address(this).balance;
@@ -172,15 +175,9 @@ contract combineApp is Ownable, AccessControl{
 
         uint split = do_harvest();
         
-        uint amount0 = ERC20(token0).balanceOf(address(this));
-        uint amount1 = ERC20(token1).balanceOf(address(this));
+        uint amount0 = token0 == WBNB_ADDR ? split : ERC20(token0).balanceOf(address(this));
+        uint amount1 = token1 == WBNB_ADDR ? split : ERC20(token1).balanceOf(address(this));
         
-        if (token0 == WBNB_ADDR)
-            amount0 = split;
-            
-        if (token1 == WBNB_ADDR)
-            amount1 = split;
-
         addLiquidity(amount0, amount1);
     }
     
@@ -235,9 +232,7 @@ contract combineApp is Ownable, AccessControl{
         emit LiquidityProvided(amountA, amountB, liquidity);
     }
     
-    function swap(uint amountIn, uint slippage, address[] memory path) private returns (uint){
-        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to swap");
-
+    function swap(uint amountIn, uint slippage, address[] memory path) internal returns (uint){
         require(amountIn > 0, "Amount for swap required");
         require(slippage > 0, "Slippage required" );
         
@@ -263,7 +258,7 @@ contract combineApp is Ownable, AccessControl{
         return amounts[1];
     }
     
-    function do_harvest() private returns (uint) {
+    function do_harvest() internal returns (uint) {
         uint amount0;
         uint amount1;
         
@@ -272,7 +267,10 @@ contract combineApp is Ownable, AccessControl{
 
         iMasterChef(chefContract).deposit(poolId,0);
         
-        uint finalReward = ERC20(rewardToken).balanceOf(address(this));
+        uint feeAmount = (pendingCake/100) * fee;
+        ERC20(rewardToken).transfer(address(feeCollector),feeAmount);
+
+        uint finalReward = ERC20(rewardToken).balanceOf(address(this)) - feeAmount;
         
         uint holdbackAmount = finalReward - ((finalReward*holdBack)/10000);
         uint split = (finalReward - holdbackAmount) / 2;
