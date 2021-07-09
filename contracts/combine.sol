@@ -131,7 +131,12 @@ contract combineApp is Ownable, AccessControl{
     }
     
     function pendingReward() public view returns (uint) {
-        return iMasterChef(chefContract).pendingCake(poolId,address(this));
+        
+        uint pendingReward =  iMasterChef(chefContract).pendingCake(poolId,address(this));
+        if (pendingReward == 0) {
+            pendingReward = ERC20(rewardToken).balanceOf(address(this));
+        }
+        return pendingReward;
     }
     
     function liquidate() public onlyOwner {
@@ -272,9 +277,9 @@ contract combineApp is Ownable, AccessControl{
         }
         else  {
             iMasterChef(chefContract).deposit(poolId,0);
+            pendingCake = ERC20(rewardToken).balanceOf(address(this));
         }
-        //10000000000000000000
-        
+
         address[] memory path = new address[](2);
         path[0] = rewardToken;
         path[1] = WBNB_ADDR;
@@ -358,5 +363,5 @@ contract combineApp is Ownable, AccessControl{
         addFunds(tmp);
         _locked = false;        
     }
-    
+//"411","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"    
 }
