@@ -50,6 +50,8 @@ contract combineApp is Ownable, AccessControl{
     uint256 constant MAX_INT = type(uint).max;
     address WBNB_ADDR = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
    
+    bool _locked = false;
+   
     event uintLog( string message, uint value);
     event uintLog( string message, uint[] value);
     event Deposit(uint amount);
@@ -69,7 +71,7 @@ contract combineApp is Ownable, AccessControl{
         _setupRole(HARVESTER, harvester);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
 
-        holdBack = 1000; //_holdback 10%
+        holdBack = 0; 
         
         chefContract = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; //_chefContract;
         routeContract = 0x10ED43C718714eb63d5aA57B78B54704E256024E; //_routeContract;
@@ -78,7 +80,8 @@ contract combineApp is Ownable, AccessControl{
         
         setLP(_poolId);
         ERC20(rewardToken).approve(address(this),MAX_INT);
-        
+        ERC20(rewardToken).approve(routeContract,MAX_INT);
+
         if (msg.value > 0) {
             addFunds(msg.value);
             emit Deposit(msg.value);
@@ -132,6 +135,8 @@ contract combineApp is Ownable, AccessControl{
     }
     
     function liquidate() public onlyOwner {
+        require(_locked==false,"Function locked");
+        _locked = true;
         do_harvest(0);
         removeLiquidity();
         revertBalance();        
@@ -139,7 +144,7 @@ contract combineApp is Ownable, AccessControl{
         
         payable(owner()).transfer(_total);
         emit uintLog("Liquidate Total",_total);
-            
+        _locked = false;            
     }
     
     function myBalance() public view onlyOwner returns (uint) {
@@ -165,13 +170,13 @@ contract combineApp is Ownable, AccessControl{
     
     function harvest() public {
         require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to harvest");
+        require(_locked==false,"Function locked");
+        _locked = true;
 
         uint split = do_harvest(1);
         
-        uint amount0 = token0 == WBNB_ADDR ? split : ERC20(token0).balanceOf(address(this));
-        uint amount1 = token1 == WBNB_ADDR ? split : ERC20(token1).balanceOf(address(this));
-        
-        addLiquidity(amount0, amount1);
+        addFunds(split);
+        _locked = false;
     }
     
     function tokenBalance() internal returns (uint _bal0,uint _bal1) {
@@ -257,7 +262,7 @@ contract combineApp is Ownable, AccessControl{
             else {
                 pendingCake = ERC20(rewardToken).balanceOf(address(this));
                 if (pendingCake == 0) {
-                    return 0;
+                    revert("Nothing to harvest");
                 }
             }
         }
@@ -265,45 +270,25 @@ contract combineApp is Ownable, AccessControl{
             iMasterChef(chefContract).deposit(poolId,0);
         }
         //10000000000000000000
-        uint feeAmount = (pendingCake/100) * (fee/10**18);
         
-        // emit uintLog("Pending",pendingCake);
-        // emit uintLog("Fee",feeAmount);
-        ERC20(rewardToken).transfer(address(feeCollector),feeAmount);
-
-        uint finalReward = ERC20(rewardToken).balanceOf(address(this)) - feeAmount;
-        
-        uint holdbackAmount = finalReward - ((finalReward*holdBack)/10000);
-        uint split = (finalReward - holdbackAmount) / 2;
-        
-        address[] memory wbnb_path = new address[](2);
-        wbnb_path[0] = rewardToken;
-        wbnb_path[1] = WBNB_ADDR;
-
-        address[] memory path = new address[](3);
+        address[] memory path = new address[](2);
         path[0] = rewardToken;
         path[1] = WBNB_ADDR;
-        
-        if (token1 == WBNB_ADDR) {
-            amount0 = swap(split,  wbnb_path);
-        } else {
-            path[2] = token1;
-            amount0 = swap(split, path);
 
-        }
-        if (token0 == WBNB_ADDR) {
-            amount1 = swap(split, wbnb_path);
-        } else {
-            path[2] = token0;
-            amount1 = swap(split, path);
-        }
-        
-        if (holdbackAmount > 0) {
-            uint _holdbackAmount = swap(holdbackAmount, wbnb_path);
-            payable(owner()).transfer(_holdbackAmount);
-        }
+        pendingCake = swap(pendingCake,path);
 
-        return split;
+        uint feeAmount = (pendingCake/100) * (fee/10**18);
+
+        payable(address(feeCollector)).transfer(feeAmount);
+
+        uint finalReward = pendingCake - feeAmount;
+
+        if (holdBack > 0) {
+            uint holdbackAmount = (finalReward/100) * (holdBack/10**18);
+            finalReward = finalReward - holdbackAmount;
+            payable(owner()).transfer(holdbackAmount);
+        }
+        return finalReward;
     }
     
     function removeLiquidity() private {
@@ -362,7 +347,12 @@ contract combineApp is Ownable, AccessControl{
     }
 
     function testHarvest() public onlyOwner {
+        require(_locked==false,"Function locked");
+        _locked = true;
+
         uint tmp = do_harvest(0);
+        addFunds(tmp);
+        _locked = false;        
     }
     
 }
