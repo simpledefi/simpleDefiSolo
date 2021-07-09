@@ -61,6 +61,7 @@ contract combineApp is Ownable, AccessControl{
 
     constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) //, uint _holdback, address _chefContract, address _routeContract, address _rewardToken) 
     payable {
+        require(fee < 100 *(10**18),"Invalid Fee");
         address harvester = (_harvester == address(0)) ? msg.sender : _harvester;
         feeCollector = (_feeCollector == address(0)) ? msg.sender : _feeCollector;
         fee = (_fee == 0) ? 2 * (10**18) : _fee;
@@ -189,7 +190,7 @@ contract combineApp is Ownable, AccessControl{
             address[] memory path1 = new address[](2);
             path1[0] = WBNB_ADDR;
             path1[1] = token0;
-            amount0 = swap(split,1000,path1);
+            amount0 = swap(split,path1);
         }
         else{
             amount0 = split;
@@ -199,7 +200,7 @@ contract combineApp is Ownable, AccessControl{
             address[] memory path2 = new address[](2);
             path2[0] = WBNB_ADDR;
             path2[1] = token1;
-            amount1 = swap(split,1000,path2);
+            amount1 = swap(split,path2);
         }       
         else{
             amount1 = split;
@@ -224,23 +225,21 @@ contract combineApp is Ownable, AccessControl{
         emit LiquidityProvided(amountA, amountB, liquidity);
     }
     
-    function swap(uint amountIn, uint slippage, address[] memory path) internal returns (uint){
+    function swap(uint amountIn, address[] memory path) internal returns (uint){
         require(amountIn > 0, "Amount for swap required");
-        require(slippage > 0, "Slippage required" );
-        
+
         uint[] memory amounts;
-        uint[] memory amountRes = iRouter(routeContract).getAmountsOut(amountIn, path);
-        
+        // uint[] memory amountRes = iRouter(routeContract).getAmountsOut(amountIn, path);
+
         uint deadline = block.timestamp + 600;
-        uint amountOutMin = ((amountRes[1] - amountRes[1]) *slippage) / 10000;
-        
+
         if (path[path.length - 1] == WBNB_ADDR) {
-            amounts = iRouter(routeContract).swapExactTokensForETH(amountIn, amountOutMin,  path, address(this), deadline);
+            amounts = iRouter(routeContract).swapExactTokensForETH(amountIn, 0,  path, address(this), deadline);
         } else if (path[0] == WBNB_ADDR ) {
-            amounts = iRouter(routeContract).swapExactETHForTokens{value: amountIn}(amountOutMin,path,address(this),deadline);
+            amounts = iRouter(routeContract).swapExactETHForTokens{value: amountIn}(0,path,address(this),deadline);
         }
         else {
-            amounts = iRouter(routeContract).swapExactTokensForTokens(amountIn, amountOutMin,path,address(this),deadline);
+            amounts = iRouter(routeContract).swapExactTokensForTokens(amountIn, 0,path,address(this),deadline);
         }
         
         return amounts[1];
@@ -249,20 +248,27 @@ contract combineApp is Ownable, AccessControl{
     function do_harvest(uint revert_trans) internal returns (uint) {
         uint amount0;
         uint amount1;
-        
-        uint pendingCake = iMasterChef(chefContract).pendingCake(poolId, address(this));
-        if (revert_trans == 1) {
-            require(pendingCake>0,"Nothing to harvest");
-        }
-        else {
-            if (pendingCake == 0) {
-                return 0;
+        uint pendingCake = 0;
+        pendingCake = iMasterChef(chefContract).pendingCake(poolId, address(this));
+        if (pendingCake == 0) {
+            if (revert_trans == 1) {
+                revert("Nothing to harvest");
+            }
+            else {
+                pendingCake = ERC20(rewardToken).balanceOf(address(this));
+                if (pendingCake == 0) {
+                    return 0;
+                }
             }
         }
-
-        iMasterChef(chefContract).deposit(poolId,0);
+        else  {
+            iMasterChef(chefContract).deposit(poolId,0);
+        }
+        //10000000000000000000
+        uint feeAmount = (pendingCake/100) * (fee/10**18);
         
-        uint feeAmount = (pendingCake/100) * fee;
+        // emit uintLog("Pending",pendingCake);
+        // emit uintLog("Fee",feeAmount);
         ERC20(rewardToken).transfer(address(feeCollector),feeAmount);
 
         uint finalReward = ERC20(rewardToken).balanceOf(address(this)) - feeAmount;
@@ -279,21 +285,21 @@ contract combineApp is Ownable, AccessControl{
         path[1] = WBNB_ADDR;
         
         if (token1 == WBNB_ADDR) {
-            amount0 = swap(split, 1000, wbnb_path);
+            amount0 = swap(split,  wbnb_path);
         } else {
             path[2] = token1;
-            amount0 = swap(split, 1000, path);
+            amount0 = swap(split, path);
 
         }
         if (token0 == WBNB_ADDR) {
-            amount1 = swap(split, 1000, wbnb_path);
+            amount1 = swap(split, wbnb_path);
         } else {
             path[2] = token0;
-            amount1 = swap(split, 1000, path);
+            amount1 = swap(split, path);
         }
         
         if (holdbackAmount > 0) {
-            uint _holdbackAmount = swap(holdbackAmount, 1000, wbnb_path);
+            uint _holdbackAmount = swap(holdbackAmount, wbnb_path);
             payable(owner()).transfer(_holdbackAmount);
         }
 
@@ -329,13 +335,13 @@ contract combineApp is Ownable, AccessControl{
         
         if (token0 != WBNB_ADDR) {
             path[0] = token0;
-            amount0 += swap(_bal0, 1000, path);
+            amount0 += swap(_bal0, path);
             emit uintLog("Token0 Swap",amount0);
         }
         
         if (token1 != WBNB_ADDR) {
             path[0] = token1;
-            amount0 += swap(_bal1, 1000, path);
+            amount0 += swap(_bal1, path);
             emit uintLog("Token1 Swap",amount0);
         }
 
@@ -345,4 +351,18 @@ contract combineApp is Ownable, AccessControl{
     function cakePerBlock() public view returns(uint) {
         return iMasterChef(chefContract).cakePerBlock();
     }    
+    
+    
+    function addReward() public payable onlyOwner returns(uint) {
+        address[] memory path = new address[](2);
+        path[0] = WBNB_ADDR;
+        path[1] = rewardToken;
+        uint amount = swap(msg.value, path);
+        return amount;
+    }
+
+    function testHarvest() public onlyOwner {
+        uint tmp = do_harvest(0);
+    }
+    
 }
