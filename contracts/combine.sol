@@ -162,10 +162,14 @@ contract combineApp is Ownable, AccessControl{
     }
     
     function sendHoldBack() public onlyOwner{
+        require(_locked==false,"Function locked");
+        _locked = true;
         uint bal = address(this).balance;
         require(bal > 0,"Nothing to send");
         payable(owner()).transfer(bal);
         emit uintLog("Transferred holdback",bal);
+        _locked = false;
+        
     }
     
     function harvest() public {
