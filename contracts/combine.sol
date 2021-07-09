@@ -12,6 +12,7 @@ interface iMasterChef{
      function deposit(uint poolId, uint amount) external;
      function withdraw(uint poolId, uint amount) external;
      function cakePerBlock() external view returns (uint);
+     function updatePool(uint poolId) external;
 }
 
 interface iRouter { 
@@ -63,7 +64,7 @@ contract combineApp is Ownable, AccessControl{
 
     constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) //, uint _holdback, address _chefContract, address _routeContract, address _rewardToken) 
     payable {
-        require(fee < 100 *(10**18),"Invalid Fee");
+        require(fee < 20 *(10**18),"Invalid Fee");
         address harvester = (_harvester == address(0)) ? msg.sender : _harvester;
         feeCollector = (_feeCollector == address(0)) ? msg.sender : _feeCollector;
         fee = (_fee == 0) ? 2 * (10**18) : _fee;
@@ -271,7 +272,7 @@ contract combineApp is Ownable, AccessControl{
             else {
                 pendingCake = ERC20(rewardToken).balanceOf(address(this));
                 if (pendingCake == 0) {
-                    revert("Nothing to harvest");
+                    return 0;
                 }
             }
         }
@@ -360,8 +361,14 @@ contract combineApp is Ownable, AccessControl{
         _locked = true;
 
         uint tmp = do_harvest(0);
-        addFunds(tmp);
+        if (tmp > 0){
+            addFunds(tmp);
+        }
         _locked = false;        
+    }
+    
+    function updatePool() public {
+        iMasterChef(chefContract).updatePool(poolId);
     }
 //"411","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"    
 }
