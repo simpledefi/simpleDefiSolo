@@ -133,11 +133,11 @@ contract combineApp is Ownable, AccessControl{
     
     function pendingReward() public view returns (uint) {
         
-        uint pendingReward =  iMasterChef(chefContract).pendingCake(poolId,address(this));
-        if (pendingReward == 0) {
-            pendingReward = ERC20(rewardToken).balanceOf(address(this));
+        uint pendingReward_val =  iMasterChef(chefContract).pendingCake(poolId,address(this));
+        if (pendingReward_val == 0) {
+            pendingReward_val = ERC20(rewardToken).balanceOf(address(this));
         }
-        return pendingReward;
+        return pendingReward_val;
     }
     
     function liquidate() public onlyOwner {
@@ -192,8 +192,6 @@ contract combineApp is Ownable, AccessControl{
     function tokenBalance() internal returns (uint _bal0,uint _bal1) {
         _bal0 = ERC20(token0).balanceOf(address(this));
         _bal1 = ERC20(token1).balanceOf(address(this));
-        emit uintLog("BalanceTokenA",_bal0);
-        emit uintLog("BalanceTokenB",_bal1);
     }    
 
     function addFunds(uint inValue) internal {
@@ -227,10 +225,12 @@ contract combineApp is Ownable, AccessControl{
         uint amountA;
         uint amountB;
         uint liquidity;
-        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to Liquidate");
 
         if (token1 == WBNB_ADDR) {
             (amountA, amountB, liquidity) = iRouter(routeContract).addLiquidityETH{value: amount1}(token0, amount0, 0,0, address(this), block.timestamp);
+        }
+        else if (token0 == WBNB_ADDR) {
+            (amountA, amountB, liquidity) = iRouter(routeContract).addLiquidityETH{value: amount0}(token1, amount0, 0,0, address(this), block.timestamp);
         }
         else {
             ( amountA,  amountB, liquidity) = iRouter(routeContract).addLiquidity(token0, token1, amount0, amount1, 0, 0, address(this), block.timestamp);
@@ -244,7 +244,6 @@ contract combineApp is Ownable, AccessControl{
         require(amountIn > 0, "Amount for swap required");
 
         uint[] memory amounts;
-        // uint[] memory amountRes = iRouter(routeContract).getAmountsOut(amountIn, path);
 
         uint deadline = block.timestamp + 600;
 
@@ -261,8 +260,6 @@ contract combineApp is Ownable, AccessControl{
     }
     
     function do_harvest(uint revert_trans) internal returns (uint) {
-        uint amount0;
-        uint amount1;
         uint pendingCake = 0;
         pendingCake = iMasterChef(chefContract).pendingCake(poolId, address(this));
         if (pendingCake == 0) {
@@ -316,9 +313,6 @@ contract combineApp is Ownable, AccessControl{
             (amountTokenA, amountTokenB) = iRouter(routeContract).removeLiquidityETH(token0,_removed,0,0,address(this), deadline);
         else
             (amountTokenA, amountTokenB) = iRouter(routeContract).removeLiquidity(token0,token1,_removed,0,0,address(this), deadline);
-        
-        emit uintLog("amountTokenA",amountTokenA);
-        emit uintLog("amountTokenB",amountTokenB);
     }
 
     function revertBalance() private {
@@ -331,13 +325,11 @@ contract combineApp is Ownable, AccessControl{
         if (token0 != WBNB_ADDR) {
             path[0] = token0;
             amount0 += swap(_bal0, path);
-            emit uintLog("Token0 Swap",amount0);
         }
         
         if (token1 != WBNB_ADDR) {
             path[0] = token1;
             amount0 += swap(_bal1, path);
-            emit uintLog("Token1 Swap",amount0);
         }
 
         tokenBalance();
@@ -370,5 +362,11 @@ contract combineApp is Ownable, AccessControl{
     function updatePool() public {
         iMasterChef(chefContract).updatePool(poolId);
     }
-//"411","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"    
+//$20 aprox:
+//63973400000000000
+//dev testing
+//"411","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"
+//live testing
+//"354","10000000000000000000","0x42a515c1EDB651F4c69c56E05578D2805D6451eB","0x42a515c1EDB651F4c69c56E05578D2805D6451eB"
 }
+
