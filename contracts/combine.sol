@@ -225,7 +225,7 @@ contract combineApp is Ownable, AccessControl{
             (amountA, amountB, liquidity) = iRouter(routeContract).addLiquidityETH{value: amount1}(token0, amount0, 0,0, address(this), block.timestamp);
         }
         else if (token0 == WBNB_ADDR) {
-            (amountA, amountB, liquidity) = iRouter(routeContract).addLiquidityETH{value: amount0}(token1, amount0, 0,0, address(this), block.timestamp);
+            (amountA, amountB, liquidity) = iRouter(routeContract).addLiquidityETH{value: amount0}(token1, amount1, 0,0, address(this), block.timestamp);
         }
         else {
             ( amountA,  amountB, liquidity) = iRouter(routeContract).addLiquidity(token0, token1, amount0, amount1, 0, 0, address(this), block.timestamp);
