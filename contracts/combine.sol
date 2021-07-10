@@ -157,11 +157,6 @@ contract combineApp is Ownable, AccessControl{
         return address(this).balance;
     }
     
-    function userInfo() public view onlyOwner returns (uint,uint) {
-        (uint a, uint b) = iMasterChef(chefContract).userInfo(poolId,address(this));
-        return (a,b);
-    }
-    
     function setHoldBack(uint _holdback) public onlyOwner {
         holdBack = _holdback;
         emit uintLog("holdback",_holdback);
