@@ -62,7 +62,19 @@ contract combineApp is Ownable, AccessControl{
 
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
-    constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) //, uint _holdback, address _chefContract, address _routeContract, address _rewardToken) 
+    modifier lockFunction() {
+        require(_locked == false,"Function locked");
+        _locked = true;
+        _;
+        _locked = false;
+    }
+    
+    modifier allowAdmin() {
+        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Restricted Function");
+        _;
+    }
+
+    constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) //, uint _holdback, address _chefContract, address _factoryContract, address _routeContract, address _rewardToken) 
     payable {
         require(fee < 20 *(10**18),"Invalid Fee");
         address harvester = (_harvester == address(0)) ? msg.sender : _harvester;
@@ -88,8 +100,9 @@ contract combineApp is Ownable, AccessControl{
             emit Deposit(msg.value);
         }
     }
-
+    
     receive() external payable {
+        addFunds(msg.value);
         emit Received(msg.sender, msg.value);
     }
 
@@ -115,8 +128,13 @@ contract combineApp is Ownable, AccessControl{
         iLPToken(lpContract).approve(routeContract,MAX_INT);        
     }
 
-    function swapPool(uint _newPool) public {
-        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to Swap");
+    function setPool(uint _poolId) public allowAdmin {
+        (uint a, uint b) = iMasterChef(chefContract).userInfo(poolId,address(this));
+        require(a == 0, "Currently invested in a pool, unable to change");
+        setLP(_poolId);
+    }
+
+    function swapPool(uint _newPool) public allowAdmin {
         uint oldPool = poolId;
         
         removeLiquidity();
@@ -140,9 +158,7 @@ contract combineApp is Ownable, AccessControl{
         return pendingReward_val;
     }
     
-    function liquidate() public onlyOwner {
-        require(_locked==false,"Function locked");
-        _locked = true;
+    function liquidate() public onlyOwner lockFunction {
         do_harvest(0);
         removeLiquidity();
         revertBalance();        
@@ -150,7 +166,6 @@ contract combineApp is Ownable, AccessControl{
         
         payable(owner()).transfer(_total);
         emit uintLog("Liquidate Total",_total);
-        _locked = false;            
     }
     
     function setHoldBack(uint _holdback) public onlyOwner {
@@ -158,26 +173,17 @@ contract combineApp is Ownable, AccessControl{
         emit uintLog("holdback",_holdback);
     }
     
-    function sendHoldBack() public onlyOwner{
-        require(_locked==false,"Function locked");
-        _locked = true;
+    function sendHoldBack() public onlyOwner lockFunction{
         uint bal = address(this).balance;
         require(bal > 0,"Nothing to send");
         payable(owner()).transfer(bal);
         emit uintLog("Transferred holdback",bal);
-        _locked = false;
-        
     }
     
-    function harvest() public {
-        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Not allowed to harvest");
-        require(_locked==false,"Function locked");
-        _locked = true;
-
+    function harvest() public lockFunction allowAdmin {
         uint split = do_harvest(1);
         
         addFunds(split);
-        _locked = false;
     }
     
     function tokenBalance() internal returns (uint _bal0,uint _bal1) {
@@ -339,31 +345,31 @@ contract combineApp is Ownable, AccessControl{
         return amount;
     }
 
-    function testHarvest() public onlyOwner {
-        require(_locked==false,"Function locked");
-        _locked = true;
-
+    function testHarvest() public onlyOwner lockFunction {
         uint tmp = do_harvest(0);
         if (tmp > 0){
             addFunds(tmp);
         }
-        _locked = false;        
     }
     
     function updatePool() public {
         iMasterChef(chefContract).updatePool(poolId);
     }
     
-    function userInfo() public view onlyOwner returns (uint,uint) {
+    function userInfo() public view allowAdmin returns (uint,uint) {
         (uint a, uint b) = iMasterChef(chefContract).userInfo(poolId,address(this));
         return (a,b);
     }
     
+    function myBalance() public view returns(uint) {
+        return address(this).balance;
+    }
 //$20 aprox:
 //63973400000000000
 //dev testing
 //"411","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"
 //live testing
 //"354","10000000000000000000","0x42a515c1EDB651F4c69c56E05578D2805D6451eB","0x42a515c1EDB651F4c69c56E05578D2805D6451eB"
+// Swap to 427
 }
 
