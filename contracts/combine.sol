@@ -312,7 +312,7 @@ contract combineApp is Ownable, AccessControl{
             (amountTokenA, amountTokenB) = iRouter(routeContract).removeLiquidity(token0,token1,_removed,0,0,address(this), deadline);
     }
 
-    function revertBalance() private {
+    function revertBalance() public onlyOwner {
         (uint _bal0, uint _bal1) = tokenBalance();
         
         address[] memory path = new address[](2);
@@ -356,9 +356,11 @@ contract combineApp is Ownable, AccessControl{
         iMasterChef(chefContract).updatePool(poolId);
     }
     
-    function userInfo() public view allowAdmin returns (uint,uint) {
+    function userInfo() public view allowAdmin returns (uint,uint,uint,uint) {
         (uint a, uint b) = iMasterChef(chefContract).userInfo(poolId,address(this));
-        return (a,b);
+        uint c = ERC20(token0).balanceOf(address(this));
+        uint d = ERC20(token1).balanceOf(address(this));
+        return (a,b,c,d);
     }
     
     function myBalance() public view returns(uint) {
