@@ -34,6 +34,10 @@ interface iLPToken{
     function approve(address spender, uint value) external returns (bool);    
 }
 
+interface iWBNB {
+    function withdraw(uint wad) external;
+}
+
 contract combineApp is Ownable, AccessControl{
     uint public poolId;
     address private chefContract;
@@ -101,10 +105,7 @@ contract combineApp is Ownable, AccessControl{
         }
     }
     
-    receive() external payable {
-        addFunds(msg.value);
-        emit Received(msg.sender, msg.value);
-    }
+    receive() external payable {}
 
     function deposit() external payable  {
         addFunds(msg.value);
@@ -129,7 +130,7 @@ contract combineApp is Ownable, AccessControl{
     }
 
     function setPool(uint _poolId) public allowAdmin {
-        (uint a, uint b) = iMasterChef(chefContract).userInfo(poolId,address(this));
+        (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
         require(a == 0, "Currently invested in a pool, unable to change");
         setLP(_poolId);
     }
@@ -186,10 +187,15 @@ contract combineApp is Ownable, AccessControl{
         addFunds(split);
     }
     
-    function tokenBalance() internal returns (uint _bal0,uint _bal1) {
+    function tokenBalance() internal view returns (uint _bal0,uint _bal1) {
         _bal0 = ERC20(token0).balanceOf(address(this));
         _bal1 = ERC20(token1).balanceOf(address(this));
     }    
+    
+    function rescueToken(address token) public onlyOwner{
+        uint _bal = ERC20(token).balanceOf(address(this));
+        ERC20(token).transfer(owner(),_bal);
+    }
 
     function addFunds(uint inValue) internal {
         uint amount0;
@@ -264,16 +270,12 @@ contract combineApp is Ownable, AccessControl{
                 revert("Nothing to harvest");
             }
             else {
-                pendingCake = ERC20(rewardToken).balanceOf(address(this));
-                if (pendingCake == 0) {
                     return 0;
-                }
             }
         }
-        else  {
-            iMasterChef(chefContract).deposit(poolId,0);
-            pendingCake = ERC20(rewardToken).balanceOf(address(this));
-        }
+        
+        iMasterChef(chefContract).deposit(poolId,0);
+        pendingCake = ERC20(rewardToken).balanceOf(address(this));
 
         address[] memory path = new address[](2);
         path[0] = rewardToken;
@@ -318,24 +320,27 @@ contract combineApp is Ownable, AccessControl{
         address[] memory path = new address[](2);
         path[1] = WBNB_ADDR;
         uint amount0 = 0;
+        uint _rewards = ERC20(rewardToken).balanceOf(address (this));
         
-        if (token0 != WBNB_ADDR) {
+        if (_rewards > 0 ){
+            path[0] = rewardToken;
+            amount0 = swap(_rewards, path);
+        }
+        
+        if (token0 != WBNB_ADDR && _bal0 > 0) {
             path[0] = token0;
             amount0 += swap(_bal0, path);
         }
         
-        if (token1 != WBNB_ADDR) {
+        if (token1 != WBNB_ADDR && _bal1 > 0) {
             path[0] = token1;
             amount0 += swap(_bal1, path);
         }
-
-        tokenBalance();
     }
     
     function cakePerBlock() public view returns(uint) {
         return iMasterChef(chefContract).cakePerBlock();
     }    
-    
     
     function addReward() public payable onlyOwner returns(uint) {
         address[] memory path = new address[](2);
@@ -356,16 +361,14 @@ contract combineApp is Ownable, AccessControl{
         iMasterChef(chefContract).updatePool(poolId);
     }
     
-    function userInfo() public view allowAdmin returns (uint,uint,uint,uint) {
+    function userInfo() public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
         (uint a, uint b) = iMasterChef(chefContract).userInfo(poolId,address(this));
-        uint c = ERC20(token0).balanceOf(address(this));
-        uint d = ERC20(token1).balanceOf(address(this));
-        return (a,b,c,d);
+        (uint c, uint d) = tokenBalance();
+        uint e = ERC20(rewardToken).balanceOf(address(this));
+        uint f = address(this).balance;
+        return (a,b,c,d,e,f);
     }
     
-    function myBalance() public view returns(uint) {
-        return address(this).balance;
-    }
 //$20 aprox:
 //63973400000000000
 //dev testing
