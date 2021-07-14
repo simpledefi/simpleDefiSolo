@@ -1,9 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
+import "./Storage.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 
 interface iMasterChef{
      function pendingCake(uint256 _pid, address _user) external view returns (uint256);
@@ -38,33 +37,13 @@ interface iWBNB {
     function withdraw(uint wad) external;
 }
 
-contract combineApp is Ownable, AccessControl{
-    uint public poolId;
-    address private chefContract;
-    address private routeContract;
-    address private factoryContract;
-    address private rewardToken;
-    address private feeCollector;
-    address public lpContract;
-    address public token0;
-    address public token1;
-    
-    uint public holdBack;
-    uint fee;
-
-    uint256 constant MAX_INT = type(uint).max;
-    address WBNB_ADDR = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-   
-    bool _locked = false;
-   
+contract combineApp is Storage, Ownable, AccessControl {
     event uintLog( string message, uint value);
     event uintLog( string message, uint[] value);
     event Deposit(uint amount);
     event Received(address sender, uint amount);
     event NewPool(uint oldPool, uint newPool);
     event LiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
-
-    bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
     modifier lockFunction() {
         require(_locked == false,"Function locked");
@@ -78,8 +57,11 @@ contract combineApp is Ownable, AccessControl{
         _;
     }
 
-    constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) //, uint _holdback, address _chefContract, address _factoryContract, address _routeContract, address _rewardToken) 
-    payable {
+    // constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) payable {
+    //     initialize(_poolId,_fee,_harvester,_feeCollector);
+    // }
+    
+    function initialize(uint64 _poolId, uint64 _fee, address _harvester, address _feeCollector) public payable {
         require(fee < 20 *(10**18),"Invalid Fee");
         address harvester = (_harvester == address(0)) ? msg.sender : _harvester;
         feeCollector = (_feeCollector == address(0)) ? msg.sender : _feeCollector;
@@ -112,7 +94,7 @@ contract combineApp is Ownable, AccessControl{
         emit Deposit(msg.value);
     }
 
-    function setLP(uint _poolId) private {
+    function setLP(uint64 _poolId) private {
         address _lpContract;
         poolId = _poolId;
         (_lpContract,,,) = iMasterChef(chefContract).poolInfo(_poolId);
@@ -129,14 +111,14 @@ contract combineApp is Ownable, AccessControl{
         iLPToken(lpContract).approve(routeContract,MAX_INT);        
     }
 
-    function setPool(uint _poolId) public allowAdmin {
+    function setPool(uint64 _poolId) public allowAdmin {
         (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
         require(a == 0, "Currently invested in a pool, unable to change");
         setLP(_poolId);
     }
 
-    function swapPool(uint _newPool) public allowAdmin {
-        uint oldPool = poolId;
+    function swapPool(uint64 _newPool) public allowAdmin {
+        uint64 oldPool = poolId;
         
         removeLiquidity();
         revertBalance();
@@ -169,7 +151,7 @@ contract combineApp is Ownable, AccessControl{
         emit uintLog("Liquidate Total",_total);
     }
     
-    function setHoldBack(uint _holdback) public onlyOwner {
+    function setHoldBack(uint64 _holdback) public onlyOwner {
         holdBack = _holdback;
         emit uintLog("holdback",_holdback);
     }
