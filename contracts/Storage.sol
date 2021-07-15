@@ -21,6 +21,7 @@ contract Storage {
     address public token1;
     
     bool _locked = false;
+    bool _initialized = false;
 
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 }

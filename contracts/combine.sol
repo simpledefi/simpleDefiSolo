@@ -44,6 +44,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     event Received(address sender, uint amount);
     event NewPool(uint oldPool, uint newPool);
     event LiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
+    event Initialized(uint64 poolId, uint64 fee, address lpContract);
 
     modifier lockFunction() {
         require(_locked == false,"Function locked");
@@ -62,10 +63,14 @@ contract combineApp is Storage, Ownable, AccessControl {
     // }
     
     function initialize(uint64 _poolId, uint64 _fee, address _harvester, address _feeCollector) public payable {
+        require(_initialized == false,"Already Initialized");
+        _initialized = true;
+        
         require(fee < 20 *(10**18),"Invalid Fee");
+
         address harvester = (_harvester == address(0)) ? msg.sender : _harvester;
-        feeCollector = (_feeCollector == address(0)) ? msg.sender : _feeCollector;
-        fee = (_fee == 0) ? 2 * (10**18) : _fee;
+        feeCollector = (_feeCollector == address(0)) ? msg.sender : _feeCollector; // This will need to be hardcoded into the contract
+        fee = (_fee == 0) ? 2 * (10**18) : _fee; // Minimum fee needs to be enforced
 
         _setupRole(HARVESTER, harvester);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
@@ -85,6 +90,7 @@ contract combineApp is Storage, Ownable, AccessControl {
             addFunds(msg.value);
             emit Deposit(msg.value);
         }
+        emit Initialized(_poolId,_fee,lpContract);
     }
     
     receive() external payable {}
@@ -118,6 +124,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function swapPool(uint64 _newPool) public allowAdmin {
+        require(_newPool != poolId,"New pool required");
         uint64 oldPool = poolId;
         
         removeLiquidity();
@@ -353,6 +360,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     
 //$20 aprox:
 //63973400000000000
+//2120000000000000000
 //dev testing
 //"411","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"
 //live testing
