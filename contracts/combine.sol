@@ -117,10 +117,14 @@ contract combineApp is Storage, Ownable, AccessControl {
         iLPToken(lpContract).approve(routeContract,MAX_INT);        
     }
 
-    function setPool(uint64 _poolId) public allowAdmin {
+    function setPool(uint64 _poolId) public allowAdmin  payable {
         (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
         require(a == 0, "Currently invested in a pool, unable to change");
         setLP(_poolId);
+        if (msg.value > 0) {
+            addFunds(msg.value);
+            emit Deposit(msg.value);
+        }
     }
 
     function swapPool(uint64 _newPool) public allowAdmin {
