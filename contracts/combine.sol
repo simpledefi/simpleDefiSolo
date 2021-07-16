@@ -320,17 +320,17 @@ contract combineApp is Ownable, AccessControl{
     }
 
     function revertBalance() public onlyOwner {
-        (uint _bal0, uint _bal1) = tokenBalance();
-        
         address[] memory path = new address[](2);
         path[1] = WBNB_ADDR;
         uint amount0 = 0;
+
         uint _rewards = ERC20(rewardToken).balanceOf(address (this));
-        
         if (_rewards > 0 ){
             path[0] = rewardToken;
             amount0 = swap(_rewards, path);
         }
+
+        (uint _bal0, uint _bal1) = tokenBalance();
         
         if (token0 != WBNB_ADDR && _bal0 > 0) {
             path[0] = token0;
@@ -381,5 +381,9 @@ contract combineApp is Ownable, AccessControl{
 //live testing
 //"354","10000000000000000000","0x42a515c1EDB651F4c69c56E05578D2805D6451eB","0x42a515c1EDB651F4c69c56E05578D2805D6451eB"
 // Swap to 427
+//cake test
+//"251","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"
+
+    
 }
 
