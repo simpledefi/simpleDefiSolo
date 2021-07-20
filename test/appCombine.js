@@ -2,7 +2,7 @@ const combineApp = artifacts.require("combineApp");
 const combine_proxy = artifacts.require("combine_proxy");
 
 contract('combineApp', accounts => {
-    it("it should deploy with proper logic contract", async() => {
+    it("Should deploy with proper logic contract", async() => {
         const app = await combineApp.deployed();
         const proxy = await combine_proxy.deployed(app.address, accounts[1]);
         let logic_contract = await proxy.logic_contract();
@@ -10,7 +10,7 @@ contract('combineApp', accounts => {
         assert(logic_contract == app.address, "invalid logic address");
     });
 
-    it("It Should set the pool ID", async() => {
+    it("Should set the pool ID", async() => {
         const app = await combineApp.deployed();
         let poolId = await app.poolId();
         assert(poolId == 0, "Initial Pool ID not 0");
@@ -169,14 +169,30 @@ contract('combineApp', accounts => {
     it("Should reject deposit from 3rd party", async() => {
         const app = await combineApp.deployed();
         try {
-            app.deposit({ value: 1 * (10 ** 18), from: accounts[2] });
+            await app.deposit({ value: 1 * (10 ** 18), from: accounts[2] });
         } catch (e) {
             assert(e.message.includes("caller is not the owner"), "Allows deposit from 3rd party");
         }
     });
 
-    it("Should allow owner to set holdback", async() => {});
+    it("Should disallow allow 3rd Party to set holdback", async() => {
+        const app = await combineApp.deployed();
+        try {
+            await app.setHoldBack((1 * (10 ** 18)).toString(), { from: accounts[2] });
+        } catch (e) {
+            assert(e.message.includes("caller is not the owner"), "Allows setHoldBack from 3rd party");
+        }
+    });
 
-    it("Should allow owner to call rescue token", async() => {});
+    it("Should disallow allow 3rd Party to call rescue token", async() => {
+        const app = await combineApp.deployed();
+        try {
+            await app.rescueToken('0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', {
+                from: accounts[2]
+            });
+        } catch (e) {
+            assert(e.message.includes("caller is not the owner"), "Allows rescueToken from 3rd party");
+        }
+    });
 
 });
