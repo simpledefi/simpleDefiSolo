@@ -28,7 +28,6 @@ contract('combineApp', accounts => {
         }
     });
 
-
     it("Should have proper token addresses", async() => {
         const app = await combineApp.deployed();
         let lp = await app.lpContract();
@@ -175,5 +174,9 @@ contract('combineApp', accounts => {
             assert(e.message.includes("caller is not the owner"), "Allows deposit from 3rd party");
         }
     });
+
+    it("Should allow owner to set holdback", async() => {});
+
+    it("Should allow owner to call rescue token", async() => {});
 
 });

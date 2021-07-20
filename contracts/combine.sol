@@ -307,7 +307,7 @@ contract combineApp is Storage, Ownable, AccessControl {
             (amountTokenA, amountTokenB) = iRouter(routeContract).removeLiquidity(token0,token1,_removed,0,0,address(this), deadline);
     }
 
-    function revertBalance() public onlyOwner {
+    function revertBalance() internal {
         address[] memory path = new address[](2);
         path[1] = WBNB_ADDR;
         uint amount0 = 0;
@@ -334,21 +334,6 @@ contract combineApp is Storage, Ownable, AccessControl {
     function cakePerBlock() public view returns(uint) {
         return iMasterChef(chefContract).cakePerBlock();
     }    
-    
-    function addReward() public payable onlyOwner returns(uint) {
-        address[] memory path = new address[](2);
-        path[0] = WBNB_ADDR;
-        path[1] = rewardToken;
-        uint amount = swap(msg.value, path);
-        return amount;
-    }
-
-    function testHarvest() public onlyOwner lockFunction {
-        uint tmp = do_harvest(0);
-        if (tmp > 0){
-            addFunds(tmp);
-        }
-    }
     
     function updatePool() public {
         iMasterChef(chefContract).updatePool(poolId);
