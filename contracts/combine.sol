@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 import "./Storage.sol";
@@ -95,7 +95,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     receive() external payable {}
 
-    function deposit() external payable  {
+    function deposit() external onlyOwner payable  {
         addFunds(msg.value);
         emit Deposit(msg.value);
     }
