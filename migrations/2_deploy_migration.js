@@ -1,6 +1,7 @@
+var beaconApp = artifacts.require("combine_beacon");
 var combineApp = artifacts.require("combineApp");
 var proxyApp = artifacts.require("combine_proxy");
-var beaconApp = artifacts.require("combine_beacon");
+
 module.exports = function(deployer, network, accounts) {
     deployer.deploy(beaconApp);
     deployer.deploy(combineApp);
