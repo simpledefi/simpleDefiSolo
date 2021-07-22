@@ -6,7 +6,7 @@ contract('combineApp', accounts => {
     it("Should deploy with proper logic contract", async() => {
         const beacon = await beacon.deployed();
         const app = await combineApp.deployed();
-        const proxy = await combine_proxy.deployed(app.address, accounts[1]);
+        const proxy = await combine_proxy.deployed(app.address, 'PANCAKESWAP', beacon.address, accounts[1]);
         await app.testSetup(beacon.address);
         await beacon.setExchange("PANCAKESWAP", app.address, 0);
         let logic_contract = await proxy.getContract();
