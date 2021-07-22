@@ -33,6 +33,10 @@ interface iLPToken{
     function approve(address spender, uint value) external returns (bool);    
 }
 
+interface iBeacon {
+    function getFee(string memory _exchange, string memory _type) external returns(uint64);
+}
+
 interface iWBNB {
     function withdraw(uint wad) external;
 }
@@ -44,7 +48,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     event Received(address sender, uint amount);
     event NewPool(uint oldPool, uint newPool);
     event LiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
-    event Initialized(uint64 poolId, uint64 fee, address lpContract);
+    event Initialized(uint64 poolId, address lpContract);
 
     modifier lockFunction() {
         require(_locked == false,"Function locked");
@@ -61,16 +65,17 @@ contract combineApp is Storage, Ownable, AccessControl {
     // constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) payable {
     //     initialize(_poolId,_fee,_harvester,_feeCollector);
     // }
+    function testSetup(address _beacon_contract) public onlyOwner {
+        beaconContract = _beacon_contract;
+    }
     
-    function initialize(uint64 _poolId, uint64 _fee, address _harvester, address _feeCollector) public payable {
+    function initialize(uint64 _poolId, address _harvester, address _feeCollector) public payable {
         require(_initialized == false,"Already Initialized");
         _initialized = true;
         
-        require(fee < 20 *(10**18),"Invalid Fee");
 
         address harvester = (_harvester == address(0)) ? msg.sender : _harvester;
         feeCollector = (_feeCollector == address(0)) ? msg.sender : _feeCollector; // This will need to be hardcoded into the contract
-        fee = (_fee == 0) ? 2 * (10**18) : _fee; // Minimum fee needs to be enforced
 
         _setupRole(HARVESTER, harvester);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
@@ -90,7 +95,7 @@ contract combineApp is Storage, Ownable, AccessControl {
             addFunds(msg.value);
             emit Deposit(msg.value);
         }
-        emit Initialized(_poolId,_fee,lpContract);
+        emit Initialized(_poolId,lpContract);
     }
     
     receive() external payable {}
@@ -275,7 +280,8 @@ contract combineApp is Storage, Ownable, AccessControl {
         path[1] = WBNB_ADDR;
 
         pendingCake = swap(pendingCake,path);
-
+        
+        uint64 fee = iBeacon(beaconContract).getFee('PANCAKESWAP','HARVEST');
         uint feeAmount = (pendingCake/100) * (fee/10**18);
 
         payable(address(feeCollector)).transfer(feeAmount);
