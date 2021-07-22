@@ -1,11 +1,12 @@
 const combineApp = artifacts.require("combineApp");
 const combine_proxy = artifacts.require("combine_proxy");
-const beacon = artifacts.require("combine_beacon");
+const combine_beacon = artifacts.require("combine_beacon");
 
 contract('combineApp', accounts => {
     it("Should deploy with proper logic contract", async() => {
-        const beacon = await beacon.deployed();
+        const beacon = await combine_beacon.deployed();
         const app = await combineApp.deployed();
+        console.log(app.address, beacon.address);
         const proxy = await combine_proxy.deployed(app.address, 'PANCAKESWAP', beacon.address, accounts[1]);
         await app.testSetup(beacon.address);
         await beacon.setExchange("PANCAKESWAP", app.address, 0);
