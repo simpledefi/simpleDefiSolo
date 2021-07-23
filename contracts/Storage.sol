@@ -16,7 +16,7 @@ contract Storage {
     address internal factoryContract;
     address internal rewardToken;
     address internal feeCollector;
-    address internal beaconContract;
+    address public beaconContract;
     
     address public lpContract;
     address public token0;
@@ -25,7 +25,7 @@ contract Storage {
     bool _locked = false;
     bool _initialized = false;
 
-    string exchange;
+    string public exchange;
 
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 }

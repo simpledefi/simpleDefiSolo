@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "./Storage.sol";
 
 interface pBeacon {
-    function getExchange(string memory _exchange) external returns(address);
+    function mExchanges(string memory _exchange) external returns(address);
 }
 
 contract combine_proxy is Storage, Ownable, AccessControl  {
@@ -28,16 +28,18 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
         exchange = _exchange;
+        logic_contract = pBeacon(beaconContract).mExchanges(exchange);
         
         return true;
     }
-    function getExchange() public returns (address) {
-            return pBeacon(beaconContract).getExchange(exchange);
+
+    function getLogicContract() public view returns (address) {
+       return logic_contract;
     }
     
     fallback () payable external {
-        address target = pBeacon(beaconContract).getExchange(exchange);
-        require(target != address(0),"Logic contract required");
+        require(logic_contract != address(0),"Logic contract required");
+        address target = logic_contract;
         
         assembly {
             let ptr := mload(0x40)
