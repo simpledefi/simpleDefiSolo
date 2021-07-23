@@ -1,40 +1,42 @@
+const base_app = artifacts.require("combineApp");
 const combineApp = artifacts.require("combineApp");
-const combine_proxy = artifacts.require("combine_proxy");
 const combine_beacon = artifacts.require("combine_beacon");
+const base_proxy = artifacts.require("combine_proxy");
 
 contract('combineApp', accounts => {
     it("Should deploy with proper logic contract", async() => {
+        const base = await base_app.deployed();
         const beacon = await combine_beacon.deployed();
-        const app = await combineApp.deployed();
-        console.log(app.address, beacon.address);
-        const proxy = await combine_proxy.deployed(app.address, 'PANCAKESWAP', beacon.address, accounts[1]);
-        await app.testSetup(beacon.address);
-        await beacon.setExchange("PANCAKESWAP", app.address, 0);
-        let logic_contract = await proxy.getContract();
-        console.log(logic_contract.toLowerCase(), app.address.toLowerCase());
-        assert(logic_contract == app.address, "invalid logic address");
+
+        await beacon.setExchange("PANCAKESWAP", base.address, 0);
+        beacon_logic_contract = await beacon.getExchange('PANCAKESWAP');
+        assert(beacon_logic_contract == base.address, "Logic Contract not set");
+        console.log("BLC", beacon_logic_contract);
     });
 
     it("Should set the pool ID", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
+        assert(app.address == base_proxy.address, "App does not equal proxy address");
+
         let poolId = await app.poolId();
-        assert(poolId == 0, "Initial Pool ID not 0");
+        assert(poolId == 0, "Initial Pool ID not 0: " + poolId.toString());
+
         await app.initialize(411, accounts[1], accounts[2]);
         poolId = await app.poolId();
         assert(poolId == 411, "Initial Pool ID not 411");
     });
 
     it("Should not allow reinitialization", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         try {
-            await app.initialize(411, '0x2320738301305c892B01f44E4E9854a2D19AE19e', '0x2320738301305c892B01f44E4E9854a2D19AE19e');
+            await app.initialize(412, '0x2320738301305c892B01f44E4E9854a2D19AE19e', '0x2320738301305c892B01f44E4E9854a2D19AE19e');
         } catch (e) {
             assert(e.message.includes("Already Initialized"), "Allowed Reinitialization");
         }
     });
 
     it("Should have proper token addresses", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         let lp = await app.lpContract();
         let token0 = await app.token0();
         let token1 = await app.token1();
@@ -45,7 +47,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should restrict admin functions", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         try {
             await app.harvest({ from: accounts[3] });
             assert(1 == 2, "Harvest Function  should be restricted");
@@ -69,7 +71,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should handle deposit", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         let userinfo = await app.userInfo();
         assert(userinfo[0] == 0, "Initial value should be 0");
         app.deposit({ value: 1 * (10 ** 18) });
@@ -78,7 +80,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should handle handle harvest", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         let pc = await app.pendingReward();
         assert(pc == 0, "Initial Pending Cake should be 0 showing: " + pc.toString());
 
@@ -95,7 +97,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should allow a liquidate from owner or admin only", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         await app.updatePool();
         pc = await app.pendingReward();
         assert(pc > 0, "Pending Cake should not be 0");
@@ -116,7 +118,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should allow pool swap", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
 
         app.deposit({ value: 1 * (10 ** 18) });
         await app.swapPool(427);
@@ -125,7 +127,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should allow set pool without balance", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         let userinfo = await app.userInfo();
         assert(userinfo[0] > 0, "Initial value should not be 0");
         try {
@@ -146,7 +148,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should allow deposit into new pool", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         let userinfo = await app.userInfo();
         let balance0 = userinfo[0];
         app.deposit({ value: 1 * (10 ** 18) });
@@ -156,7 +158,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should handle handle harvest in new pool", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         pc0 = await app.pendingReward();
         await app.updatePool();
         pc1 = await app.pendingReward();
@@ -172,7 +174,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should reject deposit from 3rd party", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         try {
             await app.deposit({ value: 1 * (10 ** 18), from: accounts[2] });
         } catch (e) {
@@ -181,7 +183,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should disallow allow 3rd Party to set holdback", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         try {
             await app.setHoldBack((1 * (10 ** 18)).toString(), { from: accounts[2] });
         } catch (e) {
@@ -190,7 +192,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should disallow allow 3rd Party to call rescue token", async() => {
-        const app = await combineApp.deployed();
+        const app = await combineApp.at(base_proxy.address);
         try {
             await app.rescueToken('0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', {
                 from: accounts[2]

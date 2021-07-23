@@ -18,8 +18,9 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         require(beacon != address(0), "Beacon Contract required");
         require(_admin != address(0), "Admin address required");
         
-        exchange = _exchange;
         beaconContract = beacon;
+        setExchange(_exchange);
+        
         _setupRole(HARVESTER, _admin);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
     }
