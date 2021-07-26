@@ -4,7 +4,9 @@ contract('combine_beacon', accounts => {
     it("Should start with 0 fee", async() => {
         const app = await combine_beacon.deployed();
         fee = await app.getFee('PANCAKESWAP', 'HARVEST');
+        console.log(fee);
         assert(fee == 0, "Initial fee not 0");
+
     });
 
     it("Fee should be immediately set", async() => {
@@ -12,6 +14,7 @@ contract('combine_beacon', accounts => {
         let amt = (10 * (10 ** 18)).toString();
         await app.setFee('PANCAKESWAP', 'HARVEST', amt, 0);
         fee = await app.getFee('PANCAKESWAP', 'HARVEST');
+        console.log(fee);
         assert(fee == amt, "Fee Not Set");
     });
 
@@ -48,8 +51,9 @@ contract('combine_beacon', accounts => {
         fee0 = await app.getFee('PANCAKESWAP', 'HARVEST');
         console.log(fee0.toString());
 
-        await app.setFee('PANCAKESWAP', 'HARVEST', amt, 5);
-        await new Promise(r => setTimeout(r, 10000));
+        result = await app.setFee('PANCAKESWAP', 'HARVEST', amt, 5);
+        console.log(result);
+        await new Promise(r => setTimeout(r, 30000));
         fee1 = await app.getFee('PANCAKESWAP', 'HARVEST');
         console.log(fee1.toString());
         assert(fee0 == fee1, "Fees should not match");

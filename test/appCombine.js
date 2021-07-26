@@ -105,6 +105,19 @@ contract('combineApp', accounts => {
         assert(fee1 > fee0, "Fee balance should have increased");
     });
 
+    it("Should clear out cake after deposit", async() => {
+        const app = await combineApp.at(base_proxy.address);
+
+        await app.updatePool();
+        await app.updatePool();
+        pc0 = await app.pendingReward();
+        await app.deposit({ value: 1 * (10 ** 18) });
+        pc1 = await app.pendingReward();
+        assert(pc1 < pc0, "Pending cake not cleared out");
+    });
+
+
+
     it("Should allow a liquidate from owner or admin only", async() => {
         const app = await combineApp.at(base_proxy.address);
         await app.updatePool();

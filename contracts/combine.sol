@@ -62,9 +62,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         _;
     }
 
-    // constructor(uint _poolId, uint _fee, address _harvester, address _feeCollector) payable {
-    //     initialize(_poolId,_fee,_harvester,_feeCollector);
-    // }
     function testSetup(address _beacon_contract) public onlyOwner {
         beaconContract = _beacon_contract;
     }
@@ -101,8 +98,13 @@ contract combineApp is Storage, Ownable, AccessControl {
     receive() external payable {}
 
     function deposit() external onlyOwner payable  {
-        addFunds(msg.value);
-        emit Deposit(msg.value);
+        uint deposit_amount = msg.value;
+        uint pendingReward_val =  iMasterChef(chefContract).pendingCake(poolId,address(this));
+        if (pendingReward_val > 0) {
+            deposit_amount = deposit_amount + do_harvest(0);
+        }
+        addFunds(deposit_amount);
+        emit Deposit(deposit_amount);
     }
 
     function setLP(uint64 _poolId) private {

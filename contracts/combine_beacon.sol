@@ -21,15 +21,17 @@ contract combine_beacon is Ownable {
 
     string[] public Exchanges; 
 
+    event feeSet(string _exchange, string _function, uint64 _amount, uint256 _time, uint256 _current);
+    
     constructor() {}
 
-    function getFee(string memory _exchange, string memory _type) public view returns(uint) {
+    function getFee(string memory _exchange, string memory _type) public view returns (uint) {
         sFee memory rv = mFee[_exchange][_type];
 
         if (rv.start != 0 && rv.start < block.timestamp) {
-            return rv.replacement_amount;
+            return (rv.replacement_amount);
         }
-        return rv.current_amount;
+        return (rv.current_amount);
     }
 
     function setFee(string memory _exchange, string memory _type, uint64 _replacement_amount, uint256 _start) public onlyOwner {
@@ -48,6 +50,7 @@ contract combine_beacon is Ownable {
         if (mFee[_exchange][_type].current_amount == 0) {
             mFee[_exchange][_type].current_amount = _replacement_amount;
         }
+        emit feeSet(_exchange,_type,_replacement_amount,_start, block.timestamp);
     }
     
     function getExchange(string memory _exchange) public view returns(address) {
