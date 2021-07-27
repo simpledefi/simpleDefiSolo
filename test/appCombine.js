@@ -87,7 +87,7 @@ contract('combineApp', accounts => {
         assert(userinfo[0] > 0, "Initial value should not be 0");
     });
 
-    it("Should handle handle harvest", async() => {
+    it("Should handle harvest", async() => {
         const app = await combineApp.at(base_proxy.address);
         let pc = await app.pendingReward();
         assert(pc == 0, "Initial Pending Cake should be 0 showing: " + pc.toString());
@@ -126,7 +126,7 @@ contract('combineApp', accounts => {
 
         try {
             await app.liquidate({ from: accounts[1] });
-            assert(1 == 2, "Allows liquidation from user not owner");
+            assert(false, "Allows liquidation from user not owner");
         } catch (e) {
             assert(e.message.includes("caller is not the owner"), "Allows liquidation from user not owner");
         }
