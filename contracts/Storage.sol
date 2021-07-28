@@ -13,7 +13,6 @@ contract Storage {
     address public logic_contract;
     address internal chefContract;
     address internal routeContract;
-    address internal factoryContract;
     address internal rewardToken;
     address internal feeCollector;
     address public beaconContract;

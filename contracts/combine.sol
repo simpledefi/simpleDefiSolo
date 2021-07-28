@@ -34,7 +34,7 @@ interface iLPToken{
 }
 
 interface iBeacon {
-    function getFee(string memory _exchange, string memory _type) external returns(uint64);
+    function getFee(string memory _exchange, string memory _type, address _user) external returns(uint64);
 }
 
 interface iWBNB {
@@ -81,7 +81,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         
         chefContract = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; //_chefContract;
         routeContract = 0x10ED43C718714eb63d5aA57B78B54704E256024E; //_routeContract;
-        factoryContract = 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73; //_factoryContract;
         rewardToken = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82; //_rewardToken;
         
         setLP(_poolId);
@@ -283,7 +282,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         pendingCake = swap(pendingCake,path);
         
-        uint64 fee = iBeacon(beaconContract).getFee('PANCAKESWAP','HARVEST');
+        uint64 fee = iBeacon(beaconContract).getFee('PANCAKESWAP','HARVEST',address(this));
         uint feeAmount = (pendingCake/100) * (fee/10**18);
 
         payable(address(feeCollector)).transfer(feeAmount);
