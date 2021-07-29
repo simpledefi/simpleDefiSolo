@@ -29,7 +29,7 @@ contract('combineApp', accounts => {
         const app = await combine_beacon.deployed();
         let amt = (10 * (10 ** 18)).toString();
         await app.setFee('PANCAKESWAP', 'HARVEST', amt, 0);
-        fee = await app.getFee('PANCAKESWAP', 'HARVEST');
+        fee = await app.getFee('PANCAKESWAP', 'HARVEST', accounts[0]);
         assert(fee == amt, "Fee Not Set");
     });
 

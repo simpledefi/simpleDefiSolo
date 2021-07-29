@@ -32,18 +32,18 @@ contract combine_beacon is Ownable {
     event exchangeSet(string  _exchange, address _replacement_logic_contract, uint256 _start);
     
     constructor() {}
-    function getFee(string memory _exchange, string memory _type) public view returns (uint) {
-        return getFee(_exchange,_type, address(0));
-    }
+    // function getFee(string memory _exchange, string memory _type) public view returns (uint) {
+    //     return getFee(_exchange,_type, address(0));
+    // }
 
     function getFee(string memory _exchange, string memory _type, address _user) public view returns (uint) {
         sFee memory rv = mFee[_exchange][_type];
         sDiscount memory disc = mDiscounts[_user];
-        uint amount = 0;
 
-        amount =  (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
-        if (disc.discount_amount > 0 && (disc.expires >= block.timestamp || disc.expires == 0)) {
-            amount = amount - (amount*(disc.discount_amount/100)); //test 110% discount
+        uint amount =  (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
+
+        if (disc.discount_amount > 0 && (disc.expires <= block.timestamp || disc.expires == 0)) {
+            amount = amount - (amount *(disc.discount_amount/100) / (10**18)); 
         }
 
         return amount;
