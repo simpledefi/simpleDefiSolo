@@ -1,3 +1,4 @@
+const truffleAssertions = require('truffle-assertions');
 const truffleAssert = require('truffle-assertions');
 
 const combineApp = artifacts.require("combineApp");
@@ -253,5 +254,4 @@ contract('combineApp', accounts => {
         result = await app.harvest();
         truffleAssert.eventNotEmitted(result, "HoldBack");
     });
-
 });
