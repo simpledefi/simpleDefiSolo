@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 import "./Storage.sol";
 
-interface pBeacon {
+interface prBeacon {
     function mExchanges(string memory _exchange) external returns(address);
 }
 
@@ -29,7 +29,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
         exchange = _exchange;
-        logic_contract = pBeacon(beaconContract).mExchanges(exchange);
+        logic_contract = prBeacon(beaconContract).mExchanges(exchange);
         
         return true;
     }

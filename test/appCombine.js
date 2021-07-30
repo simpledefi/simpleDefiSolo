@@ -1,6 +1,12 @@
+const truffleAssert = require('truffle-assertions');
+
 const combineApp = artifacts.require("combineApp");
 const combine_beacon = artifacts.require("combine_beacon");
 const base_proxy = artifacts.require("combine_proxy");
+
+function amt(val) {
+    return val.toString() + "000000000000000000";
+}
 
 contract('combineApp', accounts => {
     it("Should deploy with proper logic contract", async() => {
@@ -222,6 +228,30 @@ contract('combineApp', accounts => {
         } catch (e) {
             assert(e.message.includes("caller is not the owner"), "Allows rescueToken from 3rd party");
         }
+    });
+
+    it("Should allow holdback and send BNB to parent account", async() => {
+        const app = await combineApp.at(base_proxy.address);
+        await app.setHoldBack(amt(10));
+        await app.deposit({ value: amt(10) });
+        await app.updatePool();
+        await app.updatePool();
+        await app.updatePool();
+        await app.updatePool();
+        await app.updatePool();
+        await app.updatePool();
+        await app.updatePool();
+        result = await app.harvest();
+        truffleAssert.eventEmitted(result, "HoldBack", (ev) => {
+            return ev.amount > 0;
+        });
+
+        await app.setHoldBack(0);
+        await app.updatePool();
+        await app.updatePool();
+        await app.updatePool();
+        result = await app.harvest();
+        truffleAssert.eventNotEmitted(result, "HoldBack");
     });
 
 });

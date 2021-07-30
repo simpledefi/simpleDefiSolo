@@ -9,6 +9,8 @@ contract combineApp is Storage, Ownable, AccessControl {
     event uintLog( string message, uint value);
     event uintLog( string message, uint[] value);
     event Deposit(uint amount);
+    event HoldBack(uint amount, uint total);
+    event FeeSent(uint amount,uint total);
     event Received(address sender, uint amount);
     event NewPool(uint oldPool, uint newPool);
     event LiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
@@ -141,7 +143,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint bal = address(this).balance;
         require(bal > 0,"Nothing to send");
         payable(owner()).transfer(bal);
-        emit uintLog("Transferred holdback",bal);
+        emit HoldBack(bal,bal);
     }
     
     function harvest() public lockFunction allowAdmin {
@@ -250,6 +252,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint feeAmount = (pendingCake/100) * (fee/10**18);
 
         payable(address(feeCollector)).transfer(feeAmount);
+        emit FeeSent(feeAmount,pendingCake);
 
         uint finalReward = pendingCake - feeAmount;
 
@@ -257,6 +260,8 @@ contract combineApp is Storage, Ownable, AccessControl {
             uint holdbackAmount = (finalReward/100) * (holdBack/10**18);
             finalReward = finalReward - holdbackAmount;
             payable(owner()).transfer(holdbackAmount);
+            emit HoldBack(holdbackAmount,finalReward);
+
         }
         return finalReward;
     }
