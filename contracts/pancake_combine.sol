@@ -5,7 +5,7 @@ import "./Interfaces.sol";
 import "./Storage.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract combineApp is Storage, Ownable, AccessControl {
+contract pancakeApp is Storage, Ownable, AccessControl {
     event uintLog( string message, uint value);
     event uintLog( string message, uint[] value);
     event Deposit(uint amount);
