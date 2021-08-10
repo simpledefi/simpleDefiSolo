@@ -50,7 +50,7 @@ contract combine_beacon is Ownable {
     }
 
     function setDiscount(address _user, uint _amount, uint _expires) public onlyOwner {
-        require(_amount <= 100000000000000000000,"Cannot exceed 100%");
+        require(_amount <= 100 ether,"Cannot exceed 100%");
         mDiscounts[_user].discount_amount = _amount;
         if (_expires > 0 && _expires < 31536000) {
             _expires = block.timestamp + _expires;

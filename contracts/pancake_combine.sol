@@ -152,7 +152,7 @@ contract pancakeApp is Storage, Ownable, AccessControl {
         addFunds(split);
     }
     
-    function tokenBalance() internal view returns (uint _bal0,uint _bal1) {
+    function tokenBalance() private view returns (uint _bal0,uint _bal1) {
         _bal0 = ERC20(token0).balanceOf(address(this));
         _bal1 = ERC20(token1).balanceOf(address(this));
     }    
@@ -162,7 +162,7 @@ contract pancakeApp is Storage, Ownable, AccessControl {
         ERC20(token).transfer(owner(),_bal);
     }
 
-    function addFunds(uint inValue) internal {
+    function addFunds(uint inValue) private {
         uint amount0;
         uint amount1;
         uint split = (inValue*50)/100;
@@ -189,7 +189,7 @@ contract pancakeApp is Storage, Ownable, AccessControl {
         addLiquidity(amount0,amount1);
     }
 
-    function addLiquidity(uint amount0, uint amount1) internal {
+    function addLiquidity(uint amount0, uint amount1) private {
         uint amountA;
         uint amountB;
         uint liquidity;
@@ -208,7 +208,7 @@ contract pancakeApp is Storage, Ownable, AccessControl {
         emit LiquidityProvided(amountA, amountB, liquidity);
     }
     
-    function swap(uint amountIn, address[] memory path) internal returns (uint){
+    function swap(uint amountIn, address[] memory path) private returns (uint){
         require(amountIn > 0, "Amount for swap required");
 
         uint[] memory amounts;
@@ -227,7 +227,7 @@ contract pancakeApp is Storage, Ownable, AccessControl {
         return amounts[1];
     }
     
-    function do_harvest(uint revert_trans) internal returns (uint) {
+    function do_harvest(uint revert_trans) private returns (uint) {
         uint pendingCake = 0;
         pendingCake = iMasterChef(chefContract).pendingCake(poolId, address(this));
         if (pendingCake == 0) {
@@ -283,7 +283,7 @@ contract pancakeApp is Storage, Ownable, AccessControl {
             (amountTokenA, amountTokenB) = iRouter(routeContract).removeLiquidity(token0,token1,_removed,0,0,address(this), deadline);
     }
 
-    function revertBalance() internal {
+    function revertBalance() private {
         address[] memory path = new address[](2);
         path[1] = WBNB_ADDR;
         uint amount0 = 0;
