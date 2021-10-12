@@ -90,7 +90,7 @@ contract('combineApp', accounts => {
         assert(userinfo[0] == 0, "Initial value should be 0");
         await app.deposit({ value: amt(125) });
         userinfo = await app.userInfo();
-        // console.log(userinfo);
+        console.log(JSON.stringify(userinfo));
         assert(userinfo[0] > 0, "Initial value should not be 0");
     });
 
