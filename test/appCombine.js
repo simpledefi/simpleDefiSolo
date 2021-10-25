@@ -7,7 +7,7 @@ const base_proxy = artifacts.require("combine_proxy");
 function amt(val) {
     return val.toString() + "000000000000000000";
 }
-// Test Comment
+
 contract('combineApp', accounts => {
     it("Should deploy with proper logic contract", async() => {
         const base = await combineApp.deployed();
