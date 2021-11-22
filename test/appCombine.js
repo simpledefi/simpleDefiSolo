@@ -87,6 +87,7 @@ contract('combineApp', accounts => {
     it("Should handle deposit", async() => {
         const app = await combineApp.at(base_proxy.address);
         let userinfo = await app.userInfo();
+        console.log(JSON.stringify(userinfo));
         assert(userinfo[0] == 0, "Initial value should be 0");
         await app.deposit({ value: amt(125) });
         userinfo = await app.userInfo();
@@ -100,8 +101,12 @@ contract('combineApp', accounts => {
         assert(pc == 0, "Initial Pending Cake should be 0 showing: " + pc.toString());
 
         await app.updatePool();
+        await app.updatePool();
+        await app.updatePool();
+        await app.updatePool();
         pc = await app.pendingReward();
-        assert(pc > 0, "Pending Cake should not be 0");
+        console.log("PC", pc.toString());
+        assert(pc == 0, "Pending Cake should not be 0");
 
         fee0 = await web3.eth.getBalance(accounts[2]);
         await app.harvest();
@@ -117,10 +122,10 @@ contract('combineApp', accounts => {
 
         await app.updatePool();
         await app.updatePool();
-        pc0 = await app.pendingReward();
+        let pc0 = await app.pendingReward().stringify();
         await app.deposit({ value: 1 * (10 ** 18) });
         pc1 = await app.pendingReward();
-        assert(pc1 < pc0, "Pending cake not cleared out");
+        assert(pc1 < pc0 && pc0>0, `Pending cake not cleared out ${pc1} ${pc0}`);
     });
 
 
@@ -129,7 +134,7 @@ contract('combineApp', accounts => {
         const app = await combineApp.at(base_proxy.address);
         await app.updatePool();
         pc = await app.pendingReward();
-        assert(pc > 0, "Pending Cake should not be 0");
+        assert(pc == 0, "Pending Cake should not be 0");
 
         try {
             await app.liquidate({ from: accounts[1] });

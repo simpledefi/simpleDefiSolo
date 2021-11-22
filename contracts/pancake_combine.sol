@@ -296,12 +296,12 @@ contract pancakeApp is Storage, Ownable, AccessControl {
 
         (uint _bal0, uint _bal1) = tokenBalance();
         
-        if (token0 != WBNB_ADDR && _bal0 > 0) {
+        if (_bal0 > 0) {
             path[0] = token0;
             amount0 += swap(_bal0, path);
         }
         
-        if (token1 != WBNB_ADDR && _bal1 > 0) {
+        if (_bal1 > 0) {
             path[0] = token1;
             amount0 += swap(_bal1, path);
         }
@@ -322,7 +322,6 @@ contract pancakeApp is Storage, Ownable, AccessControl {
         uint f = address(this).balance;
         return (a,b,c,d,e,f);
     }
-    
 //$20 aprox:
 //63973400000000000
 //2120000000000000000
