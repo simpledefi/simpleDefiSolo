@@ -12,10 +12,11 @@ contract Storage {
     address constant WBNB_ADDR = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
     address public logic_contract;
     address internal chefContract;
-    address internal routeContract;
+    address internal routerContract;
     address internal rewardToken;
     address internal feeCollector;
     address public beaconContract;
+    
     
     address public lpContract;
     address public token0;
@@ -24,7 +25,8 @@ contract Storage {
     bool _locked = false;
     bool _initialized = false;
 
-    string public exchange;
-
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
+
+    string public exchange;    
+    //New Variables after this only
 }

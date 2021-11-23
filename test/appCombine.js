@@ -3,32 +3,51 @@ const truffleAssert = require('truffle-assertions');
 const combineApp = artifacts.require("combineApp");
 const combine_beacon = artifacts.require("combine_beacon");
 const base_proxy = artifacts.require("combine_proxy");
+const ERC20 = artifacts.require("ERC20");
 
+// const pool_ID = 437; //BMON-BUSD
+const pool_ID = 252; //BUSD-BNB
 function amt(val) {
     return val.toString() + "000000000000000000";
 }
 
 contract('combineApp', accounts => {
+
     it("Should deploy with proper logic contract", async() => {
         const base = await combineApp.deployed();
         const beacon = await combine_beacon.deployed();
+        await beacon.setExchangeInfo('PANCAKESWAP',
+            '0x73feaa1eE314F8c655E354234017bE2193C9E24E', //chefContract
+            '0x10ED43C718714eb63d5aA57B78B54704E256024E', //routerContract
+            '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82' //rewardToken
+        )
+
+        await beacon.setAddress("HARVESTER",accounts[2]);
+        await beacon.setAddress("FEECOLLECTOR",accounts[2]);
 
         await beacon.setExchange("PANCAKESWAP", base.address, 0);
-        beacon_logic_contract = await beacon.getExchange('PANCAKESWAP');
+        let beacon_logic_contract = await beacon.getExchange('PANCAKESWAP');
         assert(beacon_logic_contract == base.address, "Logic Contract not set");
+        let rv = await beacon.getExchangeInfo('PANCAKESWAP');
+        console.log(rv);
+        assert(rv['_chefContract'] == '0x73feaa1eE314F8c655E354234017bE2193C9E24E', "Chef Contract not set");
+        assert(rv['_routerContract'] == '0x10ED43C718714eb63d5aA57B78B54704E256024E', "Router Contract not set");
+        assert(rv['_rewardToken'] == '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', "Reward Token not set");
         console.log("BLC", beacon_logic_contract);
     });
 
     it("Should set the pool ID", async() => {
         const app = await combineApp.at(base_proxy.address);
+        const beacon = await combine_beacon.deployed();
+
         assert(app.address == base_proxy.address, "App does not equal proxy address");
 
         let poolId = await app.poolId();
         assert(poolId == 0, "Initial Pool ID not 0: " + poolId.toString());
 
-        await app.initialize(451, accounts[1], accounts[2]);
+        await app.initialize(pool_ID, beacon.address, "PANCAKESWAP");
         poolId = await app.poolId();
-        assert(poolId == 451, "Initial Pool ID not 451");
+        assert(poolId == pool_ID, "Initial Pool ID not 451");
     });
 
     it("Fee should be immediately set", async() => {
@@ -48,17 +67,6 @@ contract('combineApp', accounts => {
             assert(e.message.includes("Already Initialized"), "Allowed Reinitialization");
         }
     });
-
-    // it("Should have proper token addresses", async() => {
-    //     const app = await combineApp.at(base_proxy.address);
-    //     let lp = await app.lpContract();
-    //     let token0 = await app.token0();
-    //     let token1 = await app.token1();
-    //     // console.log(lp, token0, token1);
-    //     assert(lp.toLowerCase() == '0x7759283571Da8c0928786A96AE601944E10461Ff'.toLowerCase(), "Invalid Liquidity Pool address");
-    //     assert(token0.toLowerCase() == '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56'.toLowerCase(), "Invalid Token 0 address");
-    //     assert(token1.toLowerCase() == '0xee9801669c6138e84bd50deb500827b776777d28'.toLowerCase(), "Invalid Token 1 address");
-    // });
 
     it("Should restrict admin functions", async() => {
         const app = await combineApp.at(base_proxy.address);
@@ -98,6 +106,7 @@ contract('combineApp', accounts => {
     it("Should handle harvest", async() => {
         const app = await combineApp.at(base_proxy.address);
         let pc = await app.pendingReward();
+        console.log("Pending:",pc);
         assert(pc == 0, "Initial Pending Cake should be 0 showing: " + pc.toString());
 
         await app.updatePool();
@@ -106,7 +115,7 @@ contract('combineApp', accounts => {
         await app.updatePool();
         pc = await app.pendingReward();
         console.log("PC", pc.toString());
-        assert(pc == 0, "Pending Cake should not be 0");
+        assert(pc != 0, "Pending Cake should not be 0");
 
         fee0 = await web3.eth.getBalance(accounts[2]);
         await app.harvest();
@@ -122,7 +131,7 @@ contract('combineApp', accounts => {
 
         await app.updatePool();
         await app.updatePool();
-        let pc0 = await app.pendingReward().stringify();
+        let pc0 = await app.pendingReward();
         await app.deposit({ value: 1 * (10 ** 18) });
         pc1 = await app.pendingReward();
         assert(pc1 < pc0 && pc0>0, `Pending cake not cleared out ${pc1} ${pc0}`);
@@ -133,8 +142,8 @@ contract('combineApp', accounts => {
     it("Should allow a liquidate from owner or admin only", async() => {
         const app = await combineApp.at(base_proxy.address);
         await app.updatePool();
-        pc = await app.pendingReward();
-        assert(pc == 0, "Pending Cake should not be 0");
+        let pc = await app.pendingReward();
+        assert(pc != 0, "Pending Cake should not be 0");
 
         try {
             await app.liquidate({ from: accounts[1] });
@@ -259,4 +268,13 @@ contract('combineApp', accounts => {
         result = await app.harvest();
         truffleAssert.eventNotEmitted(result, "HoldBack");
     });
+
+    it("Should have no WBNB left in the token", async() => {
+        //web3 get erc20 token balance of user
+        let erc20 = await ERC20.at("0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c");
+        let balance = await erc20.balanceOf(accounts[0]);
+        console.log("WBNB Balance:",balance)
+        assert(balance == 0, "Should not have any WBNB left");
+    });
+
 });

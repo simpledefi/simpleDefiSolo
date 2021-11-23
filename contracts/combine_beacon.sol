@@ -21,9 +21,17 @@ contract combine_beacon is Ownable {
         uint expires;
     }
 
+    struct sExchangeInfo {
+        address chefContract;
+        address routerContract;
+        address rewardToken;
+    }
+
     mapping (string => mapping(string => sFee)) public mFee;
     mapping (string => sExchange) public mExchanges;
     mapping (address => sDiscount) public mDiscounts;
+    mapping (string => sExchangeInfo) public mExchangeInfo;
+    mapping (string => address) public mData;
 
     bool bitFlip;
 
@@ -31,11 +39,6 @@ contract combine_beacon is Ownable {
     event discountSet(address _user, uint _discount, uint _expires);
     event exchangeSet(string  _exchange, address _replacement_logic_contract, uint256 _start);
     
-    constructor() {}
-    // function getFee(string memory _exchange, string memory _type) public view returns (uint) {
-    //     return getFee(_exchange,_type, address(0));
-    // }
-
     function getFee(string memory _exchange, string memory _type, address _user) public view returns (uint) {
         sFee memory rv = mFee[_exchange][_type];
         sDiscount memory disc = mDiscounts[_user];
@@ -110,7 +113,31 @@ contract combine_beacon is Ownable {
         emit exchangeSet(_exchange, _replacement_logic_contract, _start);
     }
     
+    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, address _rewardToken) public onlyOwner {
+        require(bytes(_name).length > 0, "Name cannot be empty");
+        require(_chefContract != address(0), "Chef contract cannot be empty");
+        require(_routerContract != address(0), "Route contract cannot be empty");
+        require(_rewardToken != address(0), "Reward token cannot be empty");
+
+        mExchangeInfo[_name].chefContract = _chefContract;
+        mExchangeInfo[_name].routerContract = _routerContract;
+        mExchangeInfo[_name].rewardToken = _rewardToken;
+    }
     
-    
+    function getExchangeInfo(string memory _name) public view returns(address _chefContract, address _routerContract, address _rewardToken) {
+        _chefContract = mExchangeInfo[_name].chefContract;
+        _routerContract = mExchangeInfo[_name].routerContract;
+        _rewardToken = mExchangeInfo[_name].rewardToken;
+    }
+
+    function setAddress(string memory _key, address _value) public onlyOwner {
+        require(bytes(_key).length > 0, "Key cannot be empty");
+        require(_value != address(0), "Value cannot be empty");
+        mData[_key] = _value;
+    }
+
+    function getAddress(string memory _key) public view returns(address) {
+        return mData[_key];
+    }
 }
 

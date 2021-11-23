@@ -12,6 +12,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         _;
     }
 
+    receive() external payable {}
     constructor(string memory _exchange, address beacon, address _admin) {
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");

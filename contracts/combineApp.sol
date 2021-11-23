@@ -28,30 +28,42 @@ contract combineApp is Storage, Ownable, AccessControl {
         _;
     }
 
-    function testSetup(address _beacon_contract) public onlyOwner {
-        beaconContract = _beacon_contract;
-    }
-    
-    function initialize(uint64 _poolId, address _harvester, address _feeCollector) public payable {
+    function initialize(uint64 _poolId, address _beacon, string memory _exchangeName) public payable {
         require(_initialized == false,"Already Initialized");
         _initialized = true;
-        
+        beaconContract = _beacon;
+        exchange = _exchangeName;
 
-        address harvester = (_harvester == address(0)) ? msg.sender : _harvester;
-        feeCollector = (_feeCollector == address(0)) ? msg.sender : _feeCollector; // This will need to be hardcoded into the contract
+        address harvester = iBeacon(beaconContract).getAddress("HARVESTER");
+        feeCollector = iBeacon(beaconContract).getAddress("FEECOLLECTOR");
 
         _setupRole(HARVESTER, harvester);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
 
         holdBack = 0; 
-        
-        chefContract = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; //_chefContract;
-        routeContract = 0x10ED43C718714eb63d5aA57B78B54704E256024E; //_routeContract;
-        rewardToken = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82; //_rewardToken;
-        
+        // chefContract = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; //_chefContract;
+        // routerContract = 0x10ED43C718714eb63d5aA57B78B54704E256024E; //_routerContract;
+        // rewardToken = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82; //_rewardToken;
+
+        setup(_poolId,_exchangeName);
+    }
+
+    function newExchange(uint64 _poolId, string memory _exchangeName) public onlyOwner {
+        require(beaconContract != address(0),"Beacon Contract not configured");
+        require(bytes(_exchangeName).length > 0,"Exchange Name cannot be empty");
+        (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
+        require(a == 0, "Currently invested in a pool, unable to change");
+
+        setup(_poolId, _exchangeName);
+    }
+
+    function setup(uint64 _poolId, string memory _exchangeName) private {
+        (chefContract, routerContract, rewardToken) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+        require(chefContract != address(0),"Exchange not configured");
+
         setLP(_poolId);
         ERC20(rewardToken).approve(address(this),MAX_INT);
-        ERC20(rewardToken).approve(routeContract,MAX_INT);
+        ERC20(rewardToken).approve(routerContract,MAX_INT);
 
         if (msg.value > 0) {
             addFunds(msg.value);
@@ -81,12 +93,12 @@ contract combineApp is Storage, Ownable, AccessControl {
         token0 = iLPToken(lpContract).token0();
         token1 = iLPToken(lpContract).token1();
 
-        ERC20(token0).approve(routeContract,MAX_INT);
-        ERC20(token1).approve(routeContract,MAX_INT);
+        ERC20(token0).approve(routerContract,MAX_INT);
+        ERC20(token1).approve(routerContract,MAX_INT);
         
         iLPToken(lpContract).approve(address(this),MAX_INT);
         iLPToken(lpContract).approve(chefContract,MAX_INT);        
-        iLPToken(lpContract).approve(routeContract,MAX_INT);        
+        iLPToken(lpContract).approve(routerContract,MAX_INT);        
     }
 
     function setPool(uint64 _poolId) public allowAdmin  payable {
@@ -195,13 +207,13 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint liquidity;
 
         if (token1 == WBNB_ADDR) {
-            (amountA, amountB, liquidity) = iRouter(routeContract).addLiquidityETH{value: amount1}(token0, amount0, 0,0, address(this), block.timestamp);
+            (amountA, amountB, liquidity) = iRouter(routerContract).addLiquidityETH{value: amount1}(token0, amount0, 0,0, address(this), block.timestamp);
         }
         else if (token0 == WBNB_ADDR) {
-            (amountA, amountB, liquidity) = iRouter(routeContract).addLiquidityETH{value: amount0}(token1, amount1, 0,0, address(this), block.timestamp);
+            (amountA, amountB, liquidity) = iRouter(routerContract).addLiquidityETH{value: amount0}(token1, amount1, 0,0, address(this), block.timestamp);
         }
         else {
-            ( amountA,  amountB, liquidity) = iRouter(routeContract).addLiquidity(token0, token1, amount0, amount1, 0, 0, address(this), block.timestamp);
+            ( amountA,  amountB, liquidity) = iRouter(routerContract).addLiquidity(token0, token1, amount0, amount1, 0, 0, address(this), block.timestamp);
         }
 
         iMasterChef(chefContract).deposit(poolId,liquidity);
@@ -214,17 +226,23 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint[] memory amounts;
 
         uint deadline = block.timestamp + 600;
+        uint _bal = path[0] == WBNB_ADDR ? ERC20(WBNB_ADDR).balanceOf(address(this)) : 0;
 
-        if (path[path.length - 1] == WBNB_ADDR) {
-            amounts = iRouter(routeContract).swapExactTokensForETH(amountIn, 0,  path, address(this), deadline);
-        } else if (path[0] == WBNB_ADDR ) {
-            amounts = iRouter(routeContract).swapExactETHForTokens{value: amountIn}(0,path,address(this),deadline);
+        if (_bal > 0) {
+            iWBNB(WBNB_ADDR).withdraw(_bal);
+            return _bal;
         }
         else {
-            amounts = iRouter(routeContract).swapExactTokensForTokens(amountIn, 0,path,address(this),deadline);
+            if (path[path.length - 1] == WBNB_ADDR || _bal > 0) {
+                amounts = iRouter(routerContract).swapExactTokensForETH(amountIn, 0,  path, address(this), deadline);
+            } else if (path[0] == WBNB_ADDR ) {
+                amounts = iRouter(routerContract).swapExactETHForTokens{value: amountIn}(0,path,address(this),deadline);
+            }
+            else {
+                amounts = iRouter(routerContract).swapExactTokensForTokens(amountIn, 0,path,address(this),deadline);
+            }
+            return amounts[1];
         }
-        
-        return amounts[1];
     }
     
     function do_harvest(uint revert_trans) private returns (uint) {
@@ -278,9 +296,9 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit uintLog("_removed",_removed);
         
         if (token1 == WBNB_ADDR)
-            (amountTokenA, amountTokenB) = iRouter(routeContract).removeLiquidityETH(token0,_removed,0,0,address(this), deadline);
+            (amountTokenA, amountTokenB) = iRouter(routerContract).removeLiquidityETH(token0,_removed,0,0,address(this), deadline);
         else
-            (amountTokenA, amountTokenB) = iRouter(routeContract).removeLiquidity(token0,token1,_removed,0,0,address(this), deadline);
+            (amountTokenA, amountTokenB) = iRouter(routerContract).removeLiquidity(token0,token1,_removed,0,0,address(this), deadline);
     }
 
     function revertBalance() private {
