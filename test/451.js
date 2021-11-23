@@ -1,6 +1,6 @@
 const truffleAssert = require('truffle-assertions');
 
-const combineApp = artifacts.require("pancakeApp");
+const combineApp = artifacts.require("combineApp");
 const combine_beacon = artifacts.require("combine_beacon");
 const base_proxy = artifacts.require("combine_proxy");
 
