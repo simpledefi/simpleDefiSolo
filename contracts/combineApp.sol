@@ -175,6 +175,8 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function addFunds(uint inValue) private {
+        require(inValue > 0,"Deposit amount must be greater than 0");
+
         uint amount0;
         uint amount1;
         uint split = (inValue*50)/100;
