@@ -31,6 +31,7 @@ interface iLPToken{
 
 interface iBeacon {
     function getFee(string memory _exchange, string memory _type, address _user) external returns(uint64);
+    function getExchange(string memory _exchange) external view returns(address);
 }
 
 interface iWBNB {
