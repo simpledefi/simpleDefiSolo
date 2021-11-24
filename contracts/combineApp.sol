@@ -58,7 +58,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function setup(uint64 _poolId, string memory _exchangeName) private {
-        (chefContract, routerContract, rewardToken) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+        (chefContract, routerContract, rewardToken, pendingCall) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         require(chefContract != address(0),"Exchange not configured");
 
         setLP(_poolId);
@@ -76,7 +76,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
     function deposit() external onlyOwner payable  {
         uint deposit_amount = msg.value;
-        uint pendingReward_val =  iMasterChef(chefContract).pendingCake(poolId,address(this));
+        uint pendingReward_val =  pendingReward();
         if (pendingReward_val > 0) {
             deposit_amount = deposit_amount + do_harvest(0);
         }
@@ -127,9 +127,10 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit NewPool(oldPool,_newPool);
     }
     
-    function pendingReward() public view returns (uint) {
-        
-        uint pendingReward_val =  iMasterChef(chefContract).pendingCake(poolId,address(this));
+    function pendingReward() public view returns (uint) {        
+        // uint pendingReward_val =  iMasterChef(chefContract).pendingCake(poolId,address(this));
+        (, bytes memory data) = chefContract.staticcall(abi.encodeWithSignature(pendingCall, poolId,address(this)));
+        uint pendingReward_val = abi.decode(data,(uint256));
         if (pendingReward_val == 0) {
             pendingReward_val = ERC20(rewardToken).balanceOf(address(this));
         }
@@ -249,7 +250,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     function do_harvest(uint revert_trans) private returns (uint) {
         uint pendingCake = 0;
-        pendingCake = iMasterChef(chefContract).pendingCake(poolId, address(this));
+        pendingCake = pendingReward();
         if (pendingCake == 0) {
             if (revert_trans == 1) {
                 revert("Nothing to harvest");

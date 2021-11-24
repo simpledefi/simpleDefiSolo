@@ -25,6 +25,7 @@ contract combine_beacon is Ownable {
         address chefContract;
         address routerContract;
         address rewardToken;
+        string pendingCall;
     }
 
     mapping (string => mapping(string => sFee)) public mFee;
@@ -113,21 +114,24 @@ contract combine_beacon is Ownable {
         emit exchangeSet(_exchange, _replacement_logic_contract, _start);
     }
     
-    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, address _rewardToken) public onlyOwner {
+    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall) public onlyOwner {
         require(bytes(_name).length > 0, "Name cannot be empty");
         require(_chefContract != address(0), "Chef contract cannot be empty");
         require(_routerContract != address(0), "Route contract cannot be empty");
         require(_rewardToken != address(0), "Reward token cannot be empty");
+        require(bytes(_pendingCall).length > 0, "Pending call cannot be empty");
 
         mExchangeInfo[_name].chefContract = _chefContract;
         mExchangeInfo[_name].routerContract = _routerContract;
         mExchangeInfo[_name].rewardToken = _rewardToken;
+        mExchangeInfo[_name].pendingCall = _pendingCall;
     }
     
-    function getExchangeInfo(string memory _name) public view returns(address _chefContract, address _routerContract, address _rewardToken) {
+    function getExchangeInfo(string memory _name) public view returns(address _chefContract, address _routerContract, address _rewardToken,string memory _pendingCall) {
         _chefContract = mExchangeInfo[_name].chefContract;
         _routerContract = mExchangeInfo[_name].routerContract;
         _rewardToken = mExchangeInfo[_name].rewardToken;
+        _pendingCall = mExchangeInfo[_name].pendingCall;
     }
 
     function setAddress(string memory _key, address _value) public onlyOwner {

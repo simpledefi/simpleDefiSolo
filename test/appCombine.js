@@ -6,7 +6,8 @@ const base_proxy = artifacts.require("combine_proxy");
 const ERC20 = artifacts.require("ERC20");
 
 // const pool_ID = 437; //BMON-BUSD
-const pool_ID = 252; //BUSD-BNB
+// const pool_ID = 252; //BUSD-BNB
+const pool_ID = 130; //babyswap  
 function amt(val) {
     return val.toString() + "000000000000000000";
 }
@@ -16,11 +17,19 @@ contract('combineApp', accounts => {
     it("Should deploy with proper logic contract", async() => {
         const base = await combineApp.deployed();
         const beacon = await combine_beacon.deployed();
-        await beacon.setExchangeInfo('PANCAKESWAP',
-            '0x73feaa1eE314F8c655E354234017bE2193C9E24E', //chefContract
-            '0x10ED43C718714eb63d5aA57B78B54704E256024E', //routerContract
-            '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82' //rewardToken
-        )
+        // await beacon.setExchangeInfo('PANCAKESWAP',
+        //     '0x73feaa1eE314F8c655E354234017bE2193C9E24E', //chefContract
+        //     '0x10ED43C718714eb63d5aA57B78B54704E256024E', //routerContract
+        //     '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', //rewardToken
+        //     'pendingCake(uint256,address)'
+        // );
+
+        await beacon.setExchangeInfo('PANCAKESWAP', // really BABYSWAP
+            '0xdfaa0e08e357db0153927c7eabb492d1f60ac730', //chefContract
+            '0x325E343f1dE602396E256B67eFd1F61C3A6B38Bd', //routerContract
+            '0x53E562b9B7E5E94b81f10e96Ee70Ad06df3D2657', //rewardToken
+            'pendingCake(uint256,address)'
+        );
 
         await beacon.setAddress("HARVESTER",accounts[2]);
         await beacon.setAddress("FEECOLLECTOR",accounts[2]);
@@ -30,9 +39,9 @@ contract('combineApp', accounts => {
         assert(beacon_logic_contract == base.address, "Logic Contract not set");
         let rv = await beacon.getExchangeInfo('PANCAKESWAP');
         console.log(rv);
-        assert(rv['_chefContract'] == '0x73feaa1eE314F8c655E354234017bE2193C9E24E', "Chef Contract not set");
-        assert(rv['_routerContract'] == '0x10ED43C718714eb63d5aA57B78B54704E256024E', "Router Contract not set");
-        assert(rv['_rewardToken'] == '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', "Reward Token not set");
+        // assert(rv['_chefContract'] == '0x73feaa1eE314F8c655E354234017bE2193C9E24E', "Chef Contract not set");
+        // assert(rv['_routerContract'] == '0x10ED43C718714eb63d5aA57B78B54704E256024E', "Router Contract not set");
+        // assert(rv['_rewardToken'] == '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', "Reward Token not set");
         console.log("BLC", beacon_logic_contract);
     });
 
@@ -47,7 +56,7 @@ contract('combineApp', accounts => {
 
         await app.initialize(pool_ID, beacon.address, "PANCAKESWAP");
         poolId = await app.poolId();
-        assert(poolId == pool_ID, "Initial Pool ID not 451");
+        assert(poolId == pool_ID, "Initial Pool ID not set");
     });
 
     it("Fee should be immediately set", async() => {
@@ -61,7 +70,7 @@ contract('combineApp', accounts => {
     it("Should not allow reinitialization", async() => {
         const app = await combineApp.at(base_proxy.address);
         try {
-            await app.initialize(412, '0x2320738301305c892B01f44E4E9854a2D19AE19e', '0x2320738301305c892B01f44E4E9854a2D19AE19e');
+            await app.initialize(pool_ID-1, '0x2320738301305c892B01f44E4E9854a2D19AE19e', '0x2320738301305c892B01f44E4E9854a2D19AE19e');
             assert(false, "Allowed Reinitialization");
         } catch (e) {
             assert(e.message.includes("Already Initialized"), "Allowed Reinitialization");
@@ -164,9 +173,9 @@ contract('combineApp', accounts => {
         const app = await combineApp.at(base_proxy.address);
 
         await app.deposit({ value: 1 * (10 ** 18) });
-        await app.swapPool(427);
+        await app.swapPool(pool_ID - 10);
         let pid = await app.poolId();
-        assert(pid == 427, "Pool did not swap");
+        assert(pid == pool_ID - 10, "Pool did not swap");
     });
 
     it("Should allow set pool without balance", async() => {
@@ -174,20 +183,20 @@ contract('combineApp', accounts => {
         let userinfo = await app.userInfo();
         assert(userinfo[0] > 0, "Initial value should not be 0");
         try {
-            await app.setPool(411);
+            await app.setPool(pool_ID - 11);
         } catch (e) {
             assert(e.message.includes("Currently invested in a pool, unable to change"), "Should not be able to set pool id with balance");
         }
         await app.liquidate();
 
         try {
-            await app.setPool(411);
+            await app.setPool(pool_ID - 11);
         } catch (e) {
             assert(e.message.includes("Currently invested in a pool, unable to change"), "Liquidation did not clear balance");
         }
         let pid = await app.poolId();
 
-        assert(pid == 411, "Pool id did not get properly set");
+        assert(pid == pool_ID - 11, "Pool id did not get properly set");
     });
 
     it("Should allow deposit into new pool", async() => {

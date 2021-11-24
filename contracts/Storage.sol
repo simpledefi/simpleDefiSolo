@@ -28,5 +28,6 @@ contract Storage {
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
     string public exchange;    
+    string public pendingCall;
     //New Variables after this only
 }
