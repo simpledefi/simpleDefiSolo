@@ -5,9 +5,15 @@ const combine_beacon = artifacts.require("combine_beacon");
 const base_proxy = artifacts.require("combine_proxy");
 const ERC20 = artifacts.require("ERC20");
 
+const pool_ID = 132; //babyswap  
+const new_Pool = 131;
+const swap_ID = 130;
+
 // const pool_ID = 437; //BMON-BUSD
 // const pool_ID = 252; //BUSD-BNB
-const pool_ID = 130; //babyswap  
+// const new_Pool = 251;
+// const swap_ID = 447;
+
 function amt(val) {
     return val.toString() + "000000000000000000";
 }
@@ -21,14 +27,16 @@ contract('combineApp', accounts => {
         //     '0x73feaa1eE314F8c655E354234017bE2193C9E24E', //chefContract
         //     '0x10ED43C718714eb63d5aA57B78B54704E256024E', //routerContract
         //     '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', //rewardToken
-        //     'pendingCake(uint256,address)'
+        //     'pendingCake(uint256,address)',
+        //     '0x0000000000000000000000000000000000000000'
         // );
 
         await beacon.setExchangeInfo('PANCAKESWAP', // really BABYSWAP
             '0xdfaa0e08e357db0153927c7eabb492d1f60ac730', //chefContract
             '0x325E343f1dE602396E256B67eFd1F61C3A6B38Bd', //routerContract
             '0x53E562b9B7E5E94b81f10e96Ee70Ad06df3D2657', //rewardToken
-            'pendingCake(uint256,address)'
+            'pendingCake(uint256,address)', //pendingCall
+            '0x55d398326f99059ff775485246999027b3197955' //intermediateToken
         );
 
         await beacon.setAddress("HARVESTER",accounts[2]);
@@ -173,9 +181,9 @@ contract('combineApp', accounts => {
         const app = await combineApp.at(base_proxy.address);
 
         await app.deposit({ value: 1 * (10 ** 18) });
-        await app.swapPool(pool_ID - 10);
+        await app.swapPool(swap_ID);
         let pid = await app.poolId();
-        assert(pid == pool_ID - 10, "Pool did not swap");
+        assert(pid == swap_ID, "Pool did not swap");
     });
 
     it("Should allow set pool without balance", async() => {
@@ -190,13 +198,13 @@ contract('combineApp', accounts => {
         await app.liquidate();
 
         try {
-            await app.setPool(pool_ID - 11);
+            await app.setPool(new_Pool);
         } catch (e) {
             assert(e.message.includes("Currently invested in a pool, unable to change"), "Liquidation did not clear balance");
         }
         let pid = await app.poolId();
 
-        assert(pid == pool_ID - 11, "Pool id did not get properly set");
+        assert(pid == new_Pool, "Pool id did not get properly set");
     });
 
     it("Should allow deposit into new pool", async() => {

@@ -16,6 +16,7 @@ contract Storage {
     address internal rewardToken;
     address internal feeCollector;
     address public beaconContract;
+    address internal intermediateToken;
     
     
     address public lpContract;

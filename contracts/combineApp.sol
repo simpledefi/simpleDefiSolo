@@ -58,7 +58,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function setup(uint64 _poolId, string memory _exchangeName) private {
-        (chefContract, routerContract, rewardToken, pendingCall) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+        (chefContract, routerContract, rewardToken, pendingCall, intermediateToken) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         require(chefContract != address(0),"Exchange not configured");
 
         setLP(_poolId);
@@ -225,6 +225,18 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     function swap(uint amountIn, address[] memory path) private returns (uint){
         require(amountIn > 0, "Amount for swap required");
+        uint pathLength = (intermediateToken != address(0) && path[0] != intermediateToken && path[1] != intermediateToken) ? 3 : 2;
+        address[] memory swapPath = new address[](pathLength);
+        
+        if (pathLength == 2) {
+            swapPath[0] = path[0];
+            swapPath[1] = path[1];
+        }
+        else {
+            swapPath[0] = path[0];
+            swapPath[1] = intermediateToken;
+            swapPath[2] = path[1];
+        }
 
         uint[] memory amounts;
 
@@ -236,15 +248,15 @@ contract combineApp is Storage, Ownable, AccessControl {
             return _bal;
         }
         else {
-            if (path[path.length - 1] == WBNB_ADDR || _bal > 0) {
-                amounts = iRouter(routerContract).swapExactTokensForETH(amountIn, 0,  path, address(this), deadline);
-            } else if (path[0] == WBNB_ADDR ) {
-                amounts = iRouter(routerContract).swapExactETHForTokens{value: amountIn}(0,path,address(this),deadline);
+            if (path[path.length - 1] == WBNB_ADDR) {
+                amounts = iRouter(routerContract).swapExactTokensForETH(amountIn, 0,  swapPath, address(this), deadline);
+            } else if (path[0] == WBNB_ADDR) {
+                amounts = iRouter(routerContract).swapExactETHForTokens{value: amountIn}(0,swapPath,address(this),deadline);
             }
             else {
-                amounts = iRouter(routerContract).swapExactTokensForTokens(amountIn, 0,path,address(this),deadline);
+                amounts = iRouter(routerContract).swapExactTokensForTokens(amountIn, 0,swapPath,address(this),deadline);
             }
-            return amounts[1];
+            return amounts[swapPath.length-1];
         }
     }
     
@@ -271,9 +283,12 @@ contract combineApp is Storage, Ownable, AccessControl {
         
         uint64 fee = iBeacon(beaconContract).getFee('PANCAKESWAP','HARVEST',address(this));
         uint feeAmount = (pendingCake/100) * (fee/10**18);
+        uint _bal = address(this).balance;
 
-        payable(address(feeCollector)).transfer(feeAmount);
-        emit FeeSent(feeAmount,pendingCake);
+        if(feeAmount > 0 && _bal > 0) {
+            payable(address(feeCollector)).transfer(feeAmount);
+            emit FeeSent(feeAmount,pendingCake);
+        }
 
         uint finalReward = pendingCake - feeAmount;
 
