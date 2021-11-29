@@ -4,6 +4,7 @@ import "./Storage.sol";
 
 interface prBeacon {
     function mExchanges(string memory _exchange) external returns(address);
+    function getAddress(string memory _exchange) external returns(address);
 }
 
 contract combine_proxy is Storage, Ownable, AccessControl  {
@@ -13,17 +14,19 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     }
 
     receive() external payable {}
-    constructor(string memory _exchange, address beacon, address _admin) {
+    constructor(string memory _exchange, address beacon) {
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
         require(beacon != address(0), "Beacon Contract required");
-        require(_admin != address(0), "Admin address required");
+        _setupRole(DEFAULT_ADMIN_ROLE,owner());
         
         beaconContract = beacon;
         setExchange(_exchange);
-        
+
+        address _admin = prBeacon(beaconContract).getAddress("ADMINUSER");        
+        require(_admin != address(0), "Admin address required");
         _setupRole(HARVESTER, _admin);
-        _setupRole(DEFAULT_ADMIN_ROLE,owner());
+        
     }
     
     function setExchange(string memory _exchange) public allowAdmin returns (bool success){

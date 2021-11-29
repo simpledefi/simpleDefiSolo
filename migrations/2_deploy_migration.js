@@ -34,15 +34,18 @@ module.exports = async function(deployer, network, accounts) {
     );
 
     if (config.network == "development") {
-        console.log("Setting up PROXY App for testing");
-        await deployer.deploy(proxyApp, 'MULTIEXCHANGE', beaconApp.address, accounts[1]);
         console.log("Setting HARVEST/COLLECTOR");
         await beacon.setAddress("HARVESTER",accounts[2]);
+        await beacon.setAddress("ADMINUSER",accounts[2]);
         await beacon.setAddress("FEECOLLECTOR",accounts[2]);
+        
+        console.log("Setting up PROXY App for testing");
+        await deployer.deploy(proxyApp, 'MULTIEXCHANGE', beaconApp.address);
     }
     else {        
         console.log("Setting HARVEST/COLLECTOR");
         await beacon.setAddress("HARVESTER","0x0e0435B1aB9B9DCddff2119623e25be63ef5CB6e");
+        await beacon.setAddress("ADMINUSER","0x0e0435B1aB9B9DCddff2119623e25be63ef5CB6e");
         await beacon.setAddress("FEECOLLECTOR","0x42a515c1EDB651F4c69c56E05578D2805D6451eB");
     }
     
