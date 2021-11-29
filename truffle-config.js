@@ -17,12 +17,9 @@
  * phrase from a file you've .gitignored so it doesn't accidentally become public.
  *
  */
-
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
-// const infuraKey = "fj4jll3k.....";
-//
-// const fs = require('fs');
-// const mnemonic = fs.readFileSync(".secret").toString().trim();
+const deploy_config = require('dotenv').config().parsed;
+console.log(deploy_config.privateKey);
+const HDWalletProvider = require('@truffle/hdwallet-provider');
 
 module.exports = {
   /**
@@ -48,7 +45,14 @@ module.exports = {
       network_id: "*",       // Any network (default: none)
       gas: 10000000,
       gasPrice: 2000000000,
-  },
+    },
+    live: {
+      network_id: "*",
+      provider: function() {
+        return new HDWalletProvider(deploy_config.privateKey, "https://bsc-dataseed.binance.org");
+        // return new HDWalletProvider(deploy_config.privateKey, "http://127.0.0.1:8545");
+      }
+    }
     // Another network with more advanced options...
     // advanced: {
     // port: 8777,             // Custom port
@@ -88,7 +92,7 @@ module.exports = {
       // docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
        settings: {          // See the solidity docs for advice about optimization and evmVersion
         optimizer: {
-          enabled: false,
+          enabled: true,
           runs: 200
         },
       //  evmVersion: "byzantium"

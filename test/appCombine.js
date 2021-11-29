@@ -14,24 +14,7 @@ contract('combineApp', accounts => {
     it("Should deploy with proper logic contract", async() => {
         const base = await combineApp.deployed();
         const beacon = await combine_beacon.deployed();
-        await beacon.setExchangeInfo('PANCAKESWAP',
-            '0x73feaa1eE314F8c655E354234017bE2193C9E24E', //chefContract
-            '0x10ED43C718714eb63d5aA57B78B54704E256024E', //routerContract
-            '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', //rewardToken
-            'pendingCake(uint256,address)',
-            '0x0000000000000000000000000000000000000000'
-        );
 
-        await beacon.setExchangeInfo('BABYSWAP', // really BABYSWAP
-            '0xdfaa0e08e357db0153927c7eabb492d1f60ac730', //chefContract
-            '0x325E343f1dE602396E256B67eFd1F61C3A6B38Bd', //routerContract
-            '0x53E562b9B7E5E94b81f10e96Ee70Ad06df3D2657', //rewardToken
-            'pendingCake(uint256,address)', //pendingCall
-            '0x55d398326f99059ff775485246999027b3197955' //intermediateToken
-        );
-
-        await beacon.setAddress("HARVESTER",accounts[2]);
-        await beacon.setAddress("FEECOLLECTOR",accounts[2]);
 
         await beacon.setExchange("MULTIEXCHANGE", base.address, 0);
         let beacon_logic_contract = await beacon.getExchange('MULTIEXCHANGE');
