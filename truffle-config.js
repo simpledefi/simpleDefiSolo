@@ -47,12 +47,13 @@ module.exports = {
       gasPrice: 2000000000,
     },
     live: {
-      network_id: "*",
-      provider: function() {
-        return new HDWalletProvider(deploy_config.privateKey, "https://bsc-dataseed.binance.org");
-        // return new HDWalletProvider(deploy_config.privateKey, "http://127.0.0.1:8545");
-      }
+      provider: () => new HDWalletProvider(deploy_config.privateKey, deploy_config.deployNode),
+      network_id: 56,
+      confirmations: 10,
+      timeoutBlocks: 200,
+      skipDryRun: true
     }
+    // return new HDWalletProvider(deploy_config.privateKey, "http://127.0.0.1:8545");
     // Another network with more advanced options...
     // advanced: {
     // port: 8777,             // Custom port
