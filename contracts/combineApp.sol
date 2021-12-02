@@ -85,10 +85,11 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function setLP(uint64 _poolId) private {
-        address _lpContract;
         poolId = _poolId;
-        (_lpContract,,,) = iMasterChef(chefContract).poolInfo(_poolId);
+        (address _lpContract,uint _alloc,,) = iMasterChef(chefContract).poolInfo(_poolId);
         require(_lpContract != address(0),"LP Contract not found");
+        require(_alloc > 0,"Pool must be active");
+
         lpContract =  _lpContract;
         token0 = iLPToken(lpContract).token0();
         token1 = iLPToken(lpContract).token1();
