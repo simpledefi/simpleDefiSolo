@@ -28,6 +28,14 @@ contract combineApp is Storage, Ownable, AccessControl {
         _;
     }
 
+    modifier clearPool() {
+        if (poolId > 0) {
+            (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
+            require(a == 0, "Currently invested in a pool, unable to change");
+        }
+        _;
+    }
+
     function initialize(uint64 _poolId, address _beacon, string memory _exchangeName) public payable {
         require(_initialized == false,"Already Initialized");
         _initialized = true;
@@ -47,11 +55,9 @@ contract combineApp is Storage, Ownable, AccessControl {
         setup(_poolId,_exchangeName);
     }
 
-    function newExchange(uint64 _poolId, string memory _exchangeName) public onlyOwner {
+    function newExchange(uint64 _poolId, string memory _exchangeName) public onlyOwner clearPool {
         require(beaconContract != address(0),"Beacon Contract not configured");
         require(bytes(_exchangeName).length > 0,"Exchange Name cannot be empty");
-        (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
-        require(a == 0, "Currently invested in a pool, unable to change");
 
         setup(_poolId, _exchangeName);
     }
@@ -99,12 +105,10 @@ contract combineApp is Storage, Ownable, AccessControl {
         
         iLPToken(lpContract).approve(address(this),MAX_INT);
         iLPToken(lpContract).approve(chefContract,MAX_INT);        
-        iLPToken(lpContract).approve(routerContract,MAX_INT);        
+        iLPToken(lpContract).approve(routerContract,MAX_INT);                
     }
 
-    function setPool(uint64 _poolId) public allowAdmin  payable {
-        (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
-        require(a == 0, "Currently invested in a pool, unable to change");
+    function setPool(uint64 _poolId) public allowAdmin clearPool payable {
         setLP(_poolId);
         if (msg.value > 0) {
             addFunds(msg.value);
