@@ -32,7 +32,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         require(_initialized == false,"Already Initialized");
         _initialized = true;
         beaconContract = _beacon;
-        exchange = _exchangeName;
 
         address harvester = iBeacon(beaconContract).getAddress("HARVESTER");
         feeCollector = iBeacon(beaconContract).getAddress("FEECOLLECTOR");
@@ -60,6 +59,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     function setup(uint64 _poolId, string memory _exchangeName) private {
         (chefContract, routerContract, rewardToken, pendingCall, intermediateToken) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         require(chefContract != address(0),"Exchange not configured");
+        exchange = _exchangeName;
 
         setLP(_poolId);
         ERC20(rewardToken).approve(address(this),MAX_INT);
