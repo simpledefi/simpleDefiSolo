@@ -55,6 +55,13 @@ contract combineApp is Storage, Ownable, AccessControl {
         setup(_poolId,_exchangeName);
     }
 
+    function addHarvester(address _address) public onlyOwner {
+        _setupRole(HARVESTER,_address);
+    }
+
+    function removeHarvester(address _address) public onlyOwner{
+        revokeRole(HARVESTER,_address);
+    }
     function newExchange(uint64 _poolId, string memory _exchangeName) public onlyOwner clearPool {
         require(beaconContract != address(0),"Beacon Contract not configured");
         require(bytes(_exchangeName).length > 0,"Exchange Name cannot be empty");
