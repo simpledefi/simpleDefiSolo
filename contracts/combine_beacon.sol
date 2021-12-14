@@ -45,7 +45,7 @@ contract combine_beacon is Ownable {
         sFee memory rv = mFee[_exchange][_type];
         sDiscount memory disc = mDiscounts[_user];
         if (rv.replacement_amount == 0 && rv.current_amount == 0) {
-            rv = mFee['DEFAAULT'][_type];
+            rv = mFee['DEFAULT'][_type];
         }
 
         uint amount =  (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
@@ -60,7 +60,7 @@ contract combine_beacon is Ownable {
     function getConst(string memory _exchange, string memory _type) public view returns (uint) {
         sFee memory rv = mFee[_exchange][_type];
         if (rv.replacement_amount == 0 && rv.current_amount == 0) {
-            rv = mFee['DEFAAULT'][_type];
+            rv = mFee['DEFAULT'][_type];
         }
         return (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
     }
