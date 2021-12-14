@@ -157,9 +157,15 @@ contract('combineApp', accounts => {
         const app = await combineApp.at(base_proxy.address);
 
         await app.deposit({ value: 1 * (10 ** 18) });
-        await app.swapPool(swap_ID);
-        let pid = await app.poolId();
-        assert(pid == swap_ID, "Pool did not swap");
+        try {
+            await app.swapPool(swap_ID);
+            assert(false,`Allowed Swap Pool to inactive pool ${pool_ID} `);
+        }
+        catch (e) {
+            assert(e.message.includes("Pool must be active"), "Allowed Reinitialization");
+        }
+        // let pid = await app.poolId();
+        // assert(pid == swap_ID, "Pool did not swap");
     });
 
     it("Should allow set pool without balance", async() => {

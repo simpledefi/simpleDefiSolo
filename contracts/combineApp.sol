@@ -172,7 +172,9 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
     
     function harvest() public lockFunction allowAdmin {
-        uint startGas = gasleft() + 21000 + 7339;
+        uint64 _offset = iBeacon(beaconContract).getConst('DEFAULT','HARVESTSOLOGAS');
+        emit uintLog("Offset",_offset);
+        uint startGas = gasleft() + 21000 + _offset;
         uint split = do_harvest(1);
         
         addFunds(split);
@@ -297,7 +299,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         pendingCake = swap(pendingCake,path);
         
-        uint64 fee = iBeacon(beaconContract).getFee('PANCAKESWAP','HARVEST',address(this));
+        uint64 fee = iBeacon(beaconContract).getFee('PANCAKESWAP','HARVEST',owner());
         uint feeAmount = ((pendingCake * fee)/100e18) + ((lastGas * tx.gasprice)*10e8);
 
         if (feeAmount > pendingCake) {

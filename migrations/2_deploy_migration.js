@@ -33,6 +33,9 @@ module.exports = async function(deployer, network, accounts) {
         '0x55d398326f99059ff775485246999027b3197955' //intermediateToken
     );
 
+    await beacon.setFee('DEFAULT','HARVESTSOLOGAS',7339,0);
+    await beacon.setFee('DEFAULT','HARVESTPOOLGAS',7339,0);
+
     if (config.network == "development") {
         console.log("Setting HARVEST/COLLECTOR");
         await beacon.setAddress("HARVESTER",accounts[2]);
