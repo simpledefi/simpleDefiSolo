@@ -36,7 +36,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         _;
     }
 
-    function initialize(uint64 _poolId, address _beacon, string memory _exchangeName) public payable {
+    function initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) public onlyOwner payable {
         require(_initialized == false,"Already Initialized");
         _initialized = true;
         beaconContract = _beacon;
@@ -53,6 +53,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         // rewardToken = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82; //_rewardToken;
 
         setup(_poolId,_exchangeName);
+        transferOwnership(_owner);
     }
 
     function addHarvester(address _address) public onlyOwner {

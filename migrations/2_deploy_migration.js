@@ -1,5 +1,7 @@
 var beaconApp = artifacts.require("combine_beacon");
 var combineApp = artifacts.require("combineApp");
+var proxyFactory = artifacts.require("proxyFactory");
+
 if (config.network == "development") var proxyApp = artifacts.require("combine_proxy");
 
 module.exports = async function(deployer, network, accounts) {
@@ -13,8 +15,14 @@ module.exports = async function(deployer, network, accounts) {
     
     let beacon = await beaconApp.deployed();
     await beacon.setExchange('MULTIEXCHANGE', combineApp.address, 0);
+
+    console.log("Deploying Proxy Factory");
+    await deployer.deploy(proxyFactory,beacon.address);
+    let proxyFactoryInstance = await proxyFactory.deployed();
+    console.log("proxyFactoryInstance: ", proxyFactoryInstance.address);
     
     console.log(`Deploy to: ${config.network}`);
+    console.log("Beacon: ", beacon.address);
     console.log("Setting Pancakeswap");
     await beacon.setExchangeInfo('PANCAKESWAP',
         '0x73feaa1eE314F8c655E354234017bE2193C9E24E', //chefContract
@@ -42,8 +50,8 @@ module.exports = async function(deployer, network, accounts) {
         await beacon.setAddress("ADMINUSER",accounts[2]);
         await beacon.setAddress("FEECOLLECTOR",accounts[2]);
         
-        console.log("Setting up PROXY App for testing");
-        await deployer.deploy(proxyApp, 'MULTIEXCHANGE', beaconApp.address);
+        // console.log("Setting up PROXY App for testing");
+        // await deployer.deploy(252, proxyApp, 'MULTIEXCHANGE', beaconApp.address, accounts[0]);
     }
     else {        
         console.log("Setting HARVEST/COLLECTOR");
