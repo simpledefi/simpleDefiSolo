@@ -14,12 +14,13 @@ function amt(val) {
 contract('combineApp', accounts => {
     let proxyApp;
 
-    it('should deploy combineApp', async () => {
+    it('should deploy combineApp', async (proxyApp) => {
         let proxyFactory = await _proxyFactory.deployed();
         console.log("proxyFactory: ", proxyFactory.address);
-        proxyApp = await proxyFactory.initialize(252,"MULTIEXCHANGE","PANCAKESWAP",{value: amt(125)});
+        proxyApp = await proxyFactory.initialize(252,"MULTIEXCHANGE","PANCAKESWAP",{value: amt(125)}).call();
         console.log("proxyApp: ", proxyApp);
     });
+
     // it("Should deploy with proper logic contract", async() => {
     //     const base = await combineApp.deployed();
     //     const beacon = await combine_beacon.deployed();
