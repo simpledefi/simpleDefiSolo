@@ -29,7 +29,8 @@ module.exports = async function(deployer, network, accounts) {
         '0x10ED43C718714eb63d5aA57B78B54704E256024E', //routerContract
         '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', //rewardToken
         'pendingCake(uint256,address)',
-        '0x0000000000000000000000000000000000000000'
+        '0x0000000000000000000000000000000000000000',
+        'MULTIEXCHANGE',
     );
 
     console.log("Setting Babyswap");
@@ -38,7 +39,8 @@ module.exports = async function(deployer, network, accounts) {
         '0x325E343f1dE602396E256B67eFd1F61C3A6B38Bd', //routerContract
         '0x53E562b9B7E5E94b81f10e96Ee70Ad06df3D2657', //rewardToken
         'pendingCake(uint256,address)', //pendingCall
-        '0x55d398326f99059ff775485246999027b3197955' //intermediateToken
+        '0x55d398326f99059ff775485246999027b3197955', //intermediateToken
+        'MULTIEXCHANGE',
     );
 
     await beacon.setFee('DEFAULT','HARVESTSOLOGAS',7339,0);

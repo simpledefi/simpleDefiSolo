@@ -2,12 +2,13 @@
 pragma solidity ^0.8.0;
 import "./Storage.sol";
 interface iApp {
-    function  initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) external payable;
+    function  initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) external;
 }
 
 interface prBeacon {
     function mExchanges(string memory _exchange) external returns(address);
     function getAddress(string memory _exchange) external returns(address);
+    function getContractType(string memory _name) external returns (string memory _contract);
 }
 
 contract combine_proxy is Storage, Ownable, AccessControl  {
@@ -88,17 +89,17 @@ contract proxyFactory is Ownable {
         require(_user != address(0), "User required");
         return proxyContracts[_user][proxyContracts[_user].length - 1];
     }
-
-    function initialize(uint64  _pid,string memory _contract, string memory _exchange) public payable returns (address) {
+    
+    function initialize(uint64  _pid, string memory _exchange) public payable returns (address) {
         require(_pid != 0, "Pool ID required");
         require(beaconContract != address(0), "Beacon Contract required");
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
-        require(bytes(_contract).length > 0,"Contract Type cannot be empty");
+        string memory _contract = prBeacon(beaconContract).getContractType(_exchange);
 
         combine_proxy proxy = new combine_proxy(_pid, _contract, beaconContract, msg.sender);
         proxyContracts[msg.sender].push(address(proxy));
         proxyContractsUsers.push(msg.sender);
-        iApp(address(proxy)).initialize{value:msg.value}(_pid, beaconContract, _exchange,msg.sender);    
+        iApp(address(proxy)).initialize(_pid, beaconContract, _exchange,msg.sender);    
 
         return address(proxy);
     }

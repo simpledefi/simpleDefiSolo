@@ -71,7 +71,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function setup(uint64 _poolId, string memory _exchangeName) private {
-        (chefContract, routerContract, rewardToken, pendingCall, intermediateToken) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+        (chefContract, routerContract, rewardToken, pendingCall, intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         require(chefContract != address(0),"Exchange not configured");
         exchange = _exchangeName;
 

@@ -23,7 +23,7 @@ contract('combineApp', accounts => {
     it('should deploy combineApp with initial deposit of 125', async () => {
         let pF = await proxyFactory.deployed();
         console.log("proxyFactory: ", pF.address);
-        proxyApp = await pF.initialize(pool_ID,"MULTIEXCHANGE","PANCAKESWAP",{value: amt(125)});
+        proxyApp = await pF.initialize(pool_ID,"PANCAKESWAP",{value: amt(125)});
         proxyAddr = await pF.getLastProxy(accounts[0]);
         app = await combineApp.at(proxyAddr);
 
