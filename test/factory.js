@@ -8,6 +8,7 @@ function amt(val) {
     return val.toString() + "000000000000000000";
 }
 let proxyAddr = "";
+let proxyApp;
 
 contract ("proxyFactory",(accounts) => {
     it('should deploy combineApp', async () => {
@@ -15,6 +16,8 @@ contract ("proxyFactory",(accounts) => {
         console.log("proxyFactory: ", pF.address);
         proxyApp = await pF.initialize(252,"MULTIEXCHANGE","PANCAKESWAP",{value: amt(125)});
         proxyAddr = await pF.getLastProxy(accounts[0]);
+        proxyApp = await combineApp.at(proxyAddr);
+
         console.log("proxyApp: ", proxyApp);
         console.log("lastProxy: ", proxyAddr);
         console.log("Done deploy")
@@ -22,10 +25,7 @@ contract ("proxyFactory",(accounts) => {
 
     // let proxyApp;
     it("should get last proxy address", async () => {
-        console.log("Current Proxy: ", proxyAddr);
-
-        let app = await combineApp.at(proxyAddr);
-        let ui = await app.userInfo();
+        let ui = await proxyApp.userInfo();
         console.log("userInfo: ", ui);
     });
 
