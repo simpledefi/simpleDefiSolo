@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 import "./Storage.sol";
 interface iApp {
-    function  initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) external;
+    function  initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) external payable;
 }
 
 interface prBeacon {
@@ -99,7 +99,7 @@ contract proxyFactory is Ownable {
         combine_proxy proxy = new combine_proxy(_pid, _contract, beaconContract, msg.sender);
         proxyContracts[msg.sender].push(address(proxy));
         proxyContractsUsers.push(msg.sender);
-        iApp(address(proxy)).initialize(_pid, beaconContract, _exchange,msg.sender);    
+        iApp(address(proxy)).initialize{value:msg.value}(_pid, beaconContract, _exchange,msg.sender);    
 
         return address(proxy);
     }
