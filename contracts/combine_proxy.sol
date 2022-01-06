@@ -69,6 +69,8 @@ contract proxyFactory is Ownable {
     mapping (address => address[]) public proxyContracts;
     address[] public proxyContractsUsers;
 
+    event NewProxy(address proxy, address user);
+
     constructor (address _beacon) {
         require(_beacon != address(0), "Beacon Contract required");
         beaconContract = _beacon;
@@ -97,6 +99,8 @@ contract proxyFactory is Ownable {
         string memory _contract = prBeacon(beaconContract).getContractType(_exchange);
 
         combine_proxy proxy = new combine_proxy(_pid, _contract, beaconContract, msg.sender);
+        emit NewProxy(address(proxy), msg.sender);
+
         proxyContracts[msg.sender].push(address(proxy));
         proxyContractsUsers.push(msg.sender);
         iApp(address(proxy)).initialize{value:msg.value}(_pid, beaconContract, _exchange,msg.sender);    
