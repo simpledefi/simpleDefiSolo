@@ -18,7 +18,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     }
 
     receive() external payable {}
-    constructor(uint64 _pid, string memory _exchange, address beacon, address _owner) {
+    constructor(string memory _exchange, address beacon, address _owner) {
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
         require(beacon != address(0), "Beacon Contract required");
@@ -98,7 +98,7 @@ contract proxyFactory is Ownable {
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
         string memory _contract = prBeacon(beaconContract).getContractType(_exchange);
 
-        combine_proxy proxy = new combine_proxy(_pid, _contract, beaconContract, msg.sender);
+        combine_proxy proxy = new combine_proxy(_contract, beaconContract, msg.sender);
         emit NewProxy(address(proxy), msg.sender);
 
         proxyContracts[msg.sender].push(address(proxy));
