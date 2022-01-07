@@ -1,3 +1,4 @@
+console.log(config.network);
 const Migrations = artifacts.require("Migrations");
 
 module.exports = function (deployer) {

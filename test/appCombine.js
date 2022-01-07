@@ -1,5 +1,6 @@
 // const { iterator } = require('core-js/fn/symbol');
 const truffleAssert = require('truffle-assertions');
+const { default: Web3 } = require('web3');
 
 const combineApp = artifacts.require("combineApp");
 const combine_beacon = artifacts.require("combine_beacon");
@@ -10,6 +11,14 @@ const ERC20 = artifacts.require("ERC20");
 
 function amt(val) {
     return val.toString() + "000000000000000000";
+}
+
+function errorSig(e,sig,hex="") {
+    let functionSig = hex?hex:web3.eth.abi.encodeFunctionSignature(sig);
+
+    let rv = e.data[Object.keys(e.data)[0]].return;
+    console.log(functionSig,rv.substring(0,functionSig.length),rv);
+    return functionSig == rv.substring(0,functionSig.length);
 }
 
 let app;
@@ -46,7 +55,7 @@ contract('combineApp', accounts => {
             await app.initialize(pool_ID-1, '0x2320738301305c892B01f44E4E9854a2D19AE19e', '0x2320738301305c892B01f44E4E9854a2D19AE19e',accounts[0]);
             assert(false, "Allowed Reinitialization");
         } catch (e) {
-            assert(e.message.includes("Already Initialized"), "Allowed Reinitialization");
+            assert(errorSig(e,"InitializedError()"), "Allowed Reinitialization");
         }
     });
 
@@ -136,14 +145,14 @@ contract('combineApp', accounts => {
     });
 
     it("Should allow pool swap", async() => {
-
+        //0xc54c27fc00000000000000000000000000000000000000000000000000000000000001bf
         await app.deposit({ value: 1 * (10 ** 18) });
         try {
             await app.swapPool(swap_ID);
             assert(false,`Allowed Swap Pool to inactive pool ${pool_ID} `);
         }
         catch (e) {
-            assert(e.message.includes("Pool must be active"), "Allowed Reinitialization");
+            assert(errorSig(e,"InactivePool(uint _poolID)","0xc54c27fc"), "Allowed Reinitialization");
         }
         // let pid = await app.poolId();
         // assert(pid == swap_ID, "Pool did not swap");
@@ -155,14 +164,14 @@ contract('combineApp', accounts => {
         try {
             await app.setPool(pool_ID - 11);
         } catch (e) {
-            assert(e.message.includes("Currently invested in a pool, unable to change"), "Should not be able to set pool id with balance");
+            assert(errorSig(e,"InvestedPool(uint _poolID)","0x2154a68b"), "Should not be able to set pool id with balance");
         }
         await app.liquidate();
 
         try {
             await app.setPool(new_Pool);
         } catch (e) {
-            assert(e.message.includes("Currently invested in a pool, unable to change"), "Liquidation did not clear balance");
+            assert(errorSig(e,"InvestedPool(uint _poolID)","0x2154a68b"), "Liquidation did not clear balance");
         }
         let pid = await app.poolId();
 
@@ -336,7 +345,7 @@ contract('combineApp', accounts => {
             try {
                 await app.setPool(pool_ID - 11);
             } catch (e) {
-                assert(e.message.includes("Currently invested in a pool, unable to change"), "Should not be able to set pool id with balance");
+                assert(errorSig(e,"InvestedPool(uint _poolID)","0x2154a68b"), "Should not be able to set pool id with balance");
             }
             console.log("Before Liquidate");
             await app.liquidate();
@@ -348,7 +357,7 @@ contract('combineApp', accounts => {
                 rv = await app.setPool(new_Pool);
             } catch (e) {
                 console.log(e.message);
-                assert(e.message.includes("Currently invested in a pool, unable to change"), "Liquidation did not clear balance");
+                assert(errorSig(e,"InvestedPool(uint _poolID)"), "Liquidation did not clear balance");
             }
             let pid = await app.poolId();
 
