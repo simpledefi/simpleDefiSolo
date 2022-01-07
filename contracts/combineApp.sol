@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.7;
 pragma experimental ABIEncoderV2;
 import "./Interfaces.sol";
 import "./Storage.sol";
@@ -16,8 +16,15 @@ contract combineApp is Storage, Ownable, AccessControl {
     event LiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
     event Initialized(uint64 poolId, address lpContract);
 
+    error Locked();
+    error InitializedError();
+    error InsufficentBalance();
+    error RequiredParameter(string param);
+    error InactivePool(uint _poolID);
+    error InvestedPool(uint _poolID);
+
     modifier lockFunction() {
-        require(_locked == false,"Function locked");
+        if (_locked == true) revert Locked();
         _locked = true;
         _;
         _locked = false;
@@ -31,13 +38,13 @@ contract combineApp is Storage, Ownable, AccessControl {
     modifier clearPool() {
         if (poolId > 0) {
             (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
-            require(a == 0, "Currently invested in a pool, unable to change");
+            if (a != 0) revert InvestedPool(poolId);
         }
         _;
     }
 
     function initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) public onlyOwner payable {
-        require(_initialized == false,"Already Initialized");
+        if (_initialized == true) revert InitializedError();
         _initialized = true;
         beaconContract = _beacon;
 
@@ -48,9 +55,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
 
         holdBack = 0; 
-        // chefContract = 0x73feaa1eE314F8c655E354234017bE2193C9E24E; //_chefContract;
-        // routerContract = 0x10ED43C718714eb63d5aA57B78B54704E256024E; //_routerContract;
-        // rewardToken = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82; //_rewardToken;
 
         setup(_poolId,_exchangeName);
         transferOwnership(_owner);
@@ -64,15 +68,15 @@ contract combineApp is Storage, Ownable, AccessControl {
         revokeRole(HARVESTER,_address);
     }
     function newExchange(uint64 _poolId, string memory _exchangeName) public onlyOwner clearPool {
-        require(beaconContract != address(0),"Beacon Contract not configured");
-        require(bytes(_exchangeName).length > 0,"Exchange Name cannot be empty");
+        if (beaconContract == address(0)) revert RequiredParameter("beaconContract");
+        if (bytes(_exchangeName).length == 0) revert RequiredParameter("_exchangeName");
 
         setup(_poolId, _exchangeName);
     }
 
     function setup(uint64 _poolId, string memory _exchangeName) private {
         (chefContract, routerContract, rewardToken, pendingCall, intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
-        require(chefContract != address(0),"Exchange not configured");
+        if (chefContract == address(0)) revert RequiredParameter("chefContract");
         exchange = _exchangeName;
 
         setLP(_poolId);
@@ -101,8 +105,8 @@ contract combineApp is Storage, Ownable, AccessControl {
     function setLP(uint64 _poolId) private {
         poolId = _poolId;
         (address _lpContract,uint _alloc,,) = iMasterChef(chefContract).poolInfo(_poolId);
-        require(_lpContract != address(0),"LP Contract not found");
-        require(_alloc > 0,"Pool must be active");
+        if (_lpContract == address(0)) revert RequiredParameter("_lpContract");
+        if (_alloc == 0) revert InactivePool(_poolId);
 
         lpContract =  _lpContract;
         token0 = iLPToken(lpContract).token0();
@@ -125,14 +129,14 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function swapPool(uint64 _newPool) public allowAdmin {
-        require(_newPool != poolId,"New pool required");
+        if(_newPool == poolId) revert RequiredParameter("New pool required");
         uint64 oldPool = poolId;
         
         removeLiquidity();
         revertBalance();
         
         uint _bal = address(this).balance;
-        require(_bal>0,"Balance required before swap");
+        if (_bal==0) revert InsufficentBalance();
         
         setLP(_newPool);
         addFunds(_bal);
@@ -167,7 +171,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     function sendHoldBack() public onlyOwner lockFunction{
         uint bal = address(this).balance;
-        require(bal > 0,"Nothing to send");
+        if (bal == 0) revert InsufficentBalance();
         payable(owner()).transfer(bal);
         emit HoldBack(bal,bal);
     }
@@ -195,7 +199,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function addFunds(uint inValue) private {
-        require(inValue > 0,"Deposit amount must be greater than 0");
+        if (inValue==0) revert InsufficentBalance();
 
         uint amount0;
         uint amount1;
@@ -243,7 +247,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
     
     function swap(uint amountIn, address[] memory path) private returns (uint){
-        require(amountIn > 0, "Amount for swap required");
+        if (amountIn == 0) revert InsufficentBalance();
         uint pathLength = (intermediateToken != address(0) && path[0] != intermediateToken && path[1] != intermediateToken) ? 3 : 2;
         address[] memory swapPath = new address[](pathLength);
         
@@ -382,17 +386,5 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint f = address(this).balance;
         return (a,b,c,d,e,f);
     }
-//$20 aprox:
-//63973400000000000
-//2120000000000000000
-//dev testing
-//"411","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"
-//live testing
-//"354","10000000000000000000","0x42a515c1EDB651F4c69c56E05578D2805D6451eB","0x42a515c1EDB651F4c69c56E05578D2805D6451eB"
-// Swap to 427
-//cake test
-//"251","10000000000000000000","0x2320738301305c892B01f44E4E9854a2D19AE19e","0x2320738301305c892B01f44E4E9854a2D19AE19e"
-
-    
 }
 
