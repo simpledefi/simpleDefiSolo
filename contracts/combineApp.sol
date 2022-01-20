@@ -3,7 +3,6 @@ pragma solidity ^0.8.7;
 pragma experimental ABIEncoderV2;
 import "./Interfaces.sol";
 import "./Storage.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract combineApp is Storage, Ownable, AccessControl {
     event uintLog( string message, uint value);
@@ -20,9 +19,8 @@ contract combineApp is Storage, Ownable, AccessControl {
     error InitializedError();
     error InsufficentBalance();
     error RequiredParameter(string param);
-    error InactivePool(uint _poolID);
     error InvestedPool(uint _poolID);
-
+    
     modifier lockFunction() {
         if (_locked == true) revert Locked();
         _locked = true;
@@ -74,90 +72,77 @@ contract combineApp is Storage, Ownable, AccessControl {
         setup(_poolId, _exchangeName);
     }
 
-    function setup(uint64 _poolId, string memory _exchangeName) private {
-        (chefContract, routerContract, rewardToken, pendingCall, intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
-        if (chefContract == address(0)) revert RequiredParameter("chefContract");
-        exchange = _exchangeName;
-
-        setLP(_poolId);
-        ERC20(rewardToken).approve(address(this),MAX_INT);
-        ERC20(rewardToken).approve(routerContract,MAX_INT);
+    function setup(uint64 _poolId, string memory _exchangeName) private  {
+        slotsLib.sSlots memory _slot = slotsLib.updateSlot(slotsLib.MAX_SLOTS+1,_poolId,_exchangeName, slots, beaconContract);
 
         if (msg.value > 0) {
-            addFunds(msg.value);
+            addFunds(_slot, msg.value);
             emit Deposit(msg.value);
         }
-        emit Initialized(_poolId,lpContract);
+        emit Initialized(_poolId,_slot.lpContract);
     }
     
     receive() external payable {}
 
-    function deposit() external onlyOwner payable  {
+    function deposit(uint8 _slotId) external onlyOwner payable  {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
         uint deposit_amount = msg.value;
-        uint pendingReward_val =  pendingReward();
+        uint pendingReward_val =  pendingReward(_slotId);
         if (pendingReward_val > 0) {
-            deposit_amount = deposit_amount + do_harvest(0);
+            deposit_amount = deposit_amount + do_harvest(_slot, 0);
         }
-        addFunds(deposit_amount);
+        addFunds(_slot, deposit_amount);
         emit Deposit(deposit_amount);
     }
 
-    function setLP(uint64 _poolId) private {
-        poolId = _poolId;
-        (address _lpContract,uint _alloc,,) = iMasterChef(chefContract).poolInfo(_poolId);
-        if (_lpContract == address(0)) revert RequiredParameter("_lpContract");
-        if (_alloc == 0) revert InactivePool(_poolId);
-
-        lpContract =  _lpContract;
-        token0 = iLPToken(lpContract).token0();
-        token1 = iLPToken(lpContract).token1();
-
-        ERC20(token0).approve(routerContract,MAX_INT);
-        ERC20(token1).approve(routerContract,MAX_INT);
-        
-        iLPToken(lpContract).approve(address(this),MAX_INT);
-        iLPToken(lpContract).approve(chefContract,MAX_INT);        
-        iLPToken(lpContract).approve(routerContract,MAX_INT);                
-    }
-
-    function setPool(uint64 _poolId) public allowAdmin clearPool payable {
-        setLP(_poolId);
+    function setPool(uint8 _slotId, uint64 _poolId) public allowAdmin clearPool payable {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+        _slot = slotsLib.updateSlot(_slotId, _poolId, _slot.exchangeName,slots, beaconContract);
         if (msg.value > 0) {
-            addFunds(msg.value);
+            addFunds(_slot, msg.value);
             emit Deposit(msg.value);
         }
     }
 
-    function swapPool(uint64 _newPool) public allowAdmin {
-        if(_newPool == poolId) revert RequiredParameter("New pool required");
+    function swapPool(uint8 _slotId, uint64 _newPool) public allowAdmin {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+
+        if(_newPool == _slot.poolId) revert RequiredParameter("New pool required");
         uint64 oldPool = poolId;
         
-        removeLiquidity();
-        revertBalance();
+        removeLiquidity(_slot);
+        revertBalance(_slot);
         
         uint _bal = address(this).balance;
         if (_bal==0) revert InsufficentBalance();
         
-        setLP(_newPool);
-        addFunds(_bal);
+        // setLP(_newPool);
+        slotsLib.updateSlot(_slotId,_newPool,_slot.exchangeName,slots, beaconContract);
+        addFunds(_slot,_bal);
         
         emit NewPool(oldPool,_newPool);
     }
     
-    function pendingReward() public view returns (uint) {        
+    function pendingReward(uint8 _slotId) public view returns (uint) {        
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+        return pendingReward(_slot);
+    }
+
+    function pendingReward(slotsLib.sSlots memory _slot) private view returns (uint) {
         // uint pendingReward_val =  iMasterChef(chefContract).pendingCake(poolId,address(this));
-        (, bytes memory data) = chefContract.staticcall(abi.encodeWithSignature(pendingCall, poolId,address(this)));
+        (, bytes memory data) = chefContract.staticcall(abi.encodeWithSignature(_slot.pendingCall, _slot.poolId,address(this)));
         uint pendingReward_val = abi.decode(data,(uint256));
         if (pendingReward_val == 0) {
-            pendingReward_val = ERC20(rewardToken).balanceOf(address(this));
+            pendingReward_val += ERC20(_slot.rewardToken).balanceOf(address(this));
         }
         return pendingReward_val;
     }
     
-    function liquidate() public onlyOwner lockFunction {
-        do_harvest(0);
-        removeLiquidity();
-        revertBalance();        
+    function liquidate(uint8 _slotId) public onlyOwner lockFunction {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+        do_harvest(_slot, 0);
+        removeLiquidity(_slot);
+        revertBalance(_slot);        
         uint _total = address(this).balance;
         
         payable(owner()).transfer(_total);
@@ -176,21 +161,22 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit HoldBack(bal,bal);
     }
     
-    function harvest() public lockFunction allowAdmin {
+    function harvest(uint8 _slotId) public lockFunction allowAdmin {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
         uint64 _offset = iBeacon(beaconContract).getConst('DEFAULT','HARVESTSOLOGAS');
         emit uintLog("Offset",_offset);
         uint startGas = gasleft() + 21000 + _offset;
-        uint split = do_harvest(1);
+        uint split = do_harvest(_slot, 1);
         
-        addFunds(split);
+        addFunds(_slot, split);
         if (msg.sender != owner()) {
             lastGas = startGas - gasleft();
         }
     }
     
-    function tokenBalance() private view returns (uint _bal0,uint _bal1) {
-        _bal0 = ERC20(token0).balanceOf(address(this));
-        _bal1 = ERC20(token1).balanceOf(address(this));
+    function tokenBalance(slotsLib.sSlots memory _slot) private view returns (uint _bal0,uint _bal1) {
+        _bal0 = ERC20(_slot.token0).balanceOf(address(this));
+        _bal1 = ERC20(_slot.token1).balanceOf(address(this));
     }    
     
     function rescueToken(address token) public onlyOwner{
@@ -198,57 +184,57 @@ contract combineApp is Storage, Ownable, AccessControl {
         ERC20(token).transfer(owner(),_bal);
     }
 
-    function addFunds(uint inValue) private {
+    function addFunds(slotsLib.sSlots memory _slot, uint inValue) private {
         if (inValue==0) revert InsufficentBalance();
 
         uint amount0;
         uint amount1;
         uint split = (inValue*50)/100;
         
-        if (token0 != WBNB_ADDR) {
+        if (_slot.token0 != WBNB_ADDR) {
             address[] memory path1 = new address[](2);
             path1[0] = WBNB_ADDR;
-            path1[1] = token0;
-            amount0 = swap(split,path1);
+            path1[1] = _slot.token0;
+            amount0 = swap(_slot, split,path1);
         }
         else{
             amount0 = split;
         }
         
-        if (token1 != WBNB_ADDR) {
+        if (_slot.token1 != WBNB_ADDR) {
             address[] memory path2 = new address[](2);
             path2[0] = WBNB_ADDR;
-            path2[1] = token1;
-            amount1 = swap(split,path2);
+            path2[1] = _slot.token1;
+            amount1 = swap(_slot, split,path2);
         }       
         else{
             amount1 = split;
         }
-        addLiquidity(amount0,amount1);
+        addLiquidity(_slot,amount0,amount1);
     }
 
-    function addLiquidity(uint amount0, uint amount1) private {
+    function addLiquidity(slotsLib.sSlots memory _slot, uint amount0, uint amount1) private {
         uint amountA;
         uint amountB;
         uint liquidity;
 
         if (token1 == WBNB_ADDR) {
-            (amountA, amountB, liquidity) = iRouter(routerContract).addLiquidityETH{value: amount1}(token0, amount0, 0,0, address(this), block.timestamp);
+            (amountA, amountB, liquidity) = iRouter(_slot.routerContract).addLiquidityETH{value: amount1}(_slot.token0, amount0, 0,0, address(this), block.timestamp);
         }
         else if (token0 == WBNB_ADDR) {
-            (amountA, amountB, liquidity) = iRouter(routerContract).addLiquidityETH{value: amount0}(token1, amount1, 0,0, address(this), block.timestamp);
+            (amountA, amountB, liquidity) = iRouter(_slot.routerContract).addLiquidityETH{value: amount0}(_slot.token1, amount1, 0,0, address(this), block.timestamp);
         }
         else {
-            ( amountA,  amountB, liquidity) = iRouter(routerContract).addLiquidity(token0, token1, amount0, amount1, 0, 0, address(this), block.timestamp);
+            ( amountA,  amountB, liquidity) = iRouter(_slot.routerContract).addLiquidity(_slot.token0, _slot.token1, amount0, amount1, 0, 0, address(this), block.timestamp);
         }
 
-        iMasterChef(chefContract).deposit(poolId,liquidity);
+        iMasterChef(_slot.chefContract).deposit(_slot.poolId,liquidity);
         emit LiquidityProvided(amountA, amountB, liquidity);
     }
     
-    function swap(uint amountIn, address[] memory path) private returns (uint){
+    function swap(slotsLib.sSlots memory _slot, uint amountIn, address[] memory path) private returns (uint){
         if (amountIn == 0) revert InsufficentBalance();
-        uint pathLength = (intermediateToken != address(0) && path[0] != intermediateToken && path[1] != intermediateToken) ? 3 : 2;
+        uint pathLength = (_slot.intermediateToken != address(0) && path[0] != _slot.intermediateToken && path[1] != _slot.intermediateToken) ? 3 : 2;
         address[] memory swapPath = new address[](pathLength);
         
         if (pathLength == 2) {
@@ -257,7 +243,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
         else {
             swapPath[0] = path[0];
-            swapPath[1] = intermediateToken;
+            swapPath[1] = _slot.intermediateToken;
             swapPath[2] = path[1];
         }
 
@@ -272,20 +258,20 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
         else {
             if (path[path.length - 1] == WBNB_ADDR) {
-                amounts = iRouter(routerContract).swapExactTokensForETH(amountIn, 0,  swapPath, address(this), deadline);
+                amounts = iRouter(_slot.routerContract).swapExactTokensForETH(amountIn, 0,  swapPath, address(this), deadline);
             } else if (path[0] == WBNB_ADDR) {
-                amounts = iRouter(routerContract).swapExactETHForTokens{value: amountIn}(0,swapPath,address(this),deadline);
+                amounts = iRouter(_slot.routerContract).swapExactETHForTokens{value: amountIn}(0,swapPath,address(this),deadline);
             }
             else {
-                amounts = iRouter(routerContract).swapExactTokensForTokens(amountIn, 0,swapPath,address(this),deadline);
+                amounts = iRouter(_slot.routerContract).swapExactTokensForTokens(amountIn, 0,swapPath,address(this),deadline);
             }
             return amounts[swapPath.length-1];
         }
     }
     
-    function do_harvest(uint revert_trans) private returns (uint) {
+    function do_harvest(slotsLib.sSlots memory _slot,uint revert_trans) private returns (uint) {
         uint pendingCake = 0;
-        pendingCake = pendingReward();
+        pendingCake = pendingReward(_slot);
         if (pendingCake == 0) {
             if (revert_trans == 1) {
                 revert("Nothing to harvest");
@@ -295,14 +281,14 @@ contract combineApp is Storage, Ownable, AccessControl {
             }
         }
         
-        iMasterChef(chefContract).deposit(poolId,0);
-        pendingCake = ERC20(rewardToken).balanceOf(address(this));
+        iMasterChef(_slot.chefContract).deposit(_slot.poolId,0);
+        pendingCake = ERC20(_slot.rewardToken).balanceOf(address(this));
 
         address[] memory path = new address[](2);
-        path[0] = rewardToken;
+        path[0] = _slot.rewardToken;
         path[1] = WBNB_ADDR;
 
-        pendingCake = swap(pendingCake,path);
+        pendingCake = swap(_slot, pendingCake,path);
         
         uint64 fee = iBeacon(beaconContract).getFee('PANCAKESWAP','HARVEST',owner());
         uint feeAmount = ((pendingCake * fee)/100e18) + ((lastGas * tx.gasprice)*10e8);
@@ -330,61 +316,70 @@ contract combineApp is Storage, Ownable, AccessControl {
         return finalReward;
     }
     
-    function removeLiquidity() private {
+    function removeLiquidity(slotsLib.sSlots memory _slot) private {
         uint amountTokenA;
         uint amountTokenB;
         uint deadline = block.timestamp + 600;
 
-        (uint _lpBal,) = iMasterChef(chefContract).userInfo(poolId,address(this));
-        iMasterChef(chefContract).withdraw(poolId,_lpBal);
+        (uint _lpBal,) = iMasterChef(_slot.chefContract).userInfo(_slot.poolId,address(this));
+        iMasterChef(_slot.chefContract).withdraw(_slot.poolId,_lpBal);
         
-        uint _removed = ERC20(lpContract).balanceOf(address(this));
+        uint _removed = ERC20(_slot.lpContract).balanceOf(address(this));
         emit uintLog("_removed",_removed);
         
         if (token1 == WBNB_ADDR)
-            (amountTokenA, amountTokenB) = iRouter(routerContract).removeLiquidityETH(token0,_removed,0,0,address(this), deadline);
+            (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidityETH(_slot.token0,_removed,0,0,address(this), deadline);
         else
-            (amountTokenA, amountTokenB) = iRouter(routerContract).removeLiquidity(token0,token1,_removed,0,0,address(this), deadline);
+            (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidity(_slot.token0,_slot.token1,_removed,0,0,address(this), deadline);
     }
 
-    function revertBalance() private {
+    function revertBalance(slotsLib.sSlots memory _slot) private {
         address[] memory path = new address[](2);
         path[1] = WBNB_ADDR;
         uint amount0 = 0;
 
-        uint _rewards = ERC20(rewardToken).balanceOf(address (this));
+        uint _rewards = ERC20(_slot.rewardToken).balanceOf(address (this));
         if (_rewards > 0 ){
-            path[0] = rewardToken;
-            amount0 = swap(_rewards, path);
+            path[0] = _slot.rewardToken;
+            amount0 = swap(_slot, _rewards, path);
         }
 
-        (uint _bal0, uint _bal1) = tokenBalance();
+        (uint _bal0, uint _bal1) = tokenBalance(_slot);
         
         if (_bal0 > 0) {
-            path[0] = token0;
-            amount0 += swap(_bal0, path);
+            path[0] = _slot.token0;
+            amount0 += swap(_slot, _bal0, path);
         }
         
         if (_bal1 > 0) {
-            path[0] = token1;
-            amount0 += swap(_bal1, path);
+            path[0] = _slot.token1;
+            amount0 += swap(_slot, _bal1, path);
         }
     }
     
-    function cakePerBlock() public view returns(uint) {
-        return iMasterChef(chefContract).cakePerBlock();
+    function cakePerBlock(uint8 _slotId) public view returns(uint) {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+        return iMasterChef(_slot.chefContract).cakePerBlock();
     }    
     
-    function updatePool() public {
-        iMasterChef(chefContract).updatePool(poolId);
+    function updatePool(uint8 _slotId) public {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+
+        iMasterChef(_slot.chefContract).updatePool(_slot.poolId);
     }
     
-    function userInfo() public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
-        (uint a, uint b) = iMasterChef(chefContract).userInfo(poolId,address(this));
-        (uint c, uint d) = tokenBalance();
-        uint e = ERC20(rewardToken).balanceOf(address(this));
+    function userInfo(uint8 _slotId) public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+
+        (uint a, uint b) = iMasterChef(_slot.chefContract).userInfo(poolId,address(this));
+        (uint c, uint d) = tokenBalance(_slot);
+        uint e = ERC20(_slot.rewardToken).balanceOf(address(this));
         uint f = address(this).balance;
         return (a,b,c,d,e,f);
+    }
+
+    function getSlot(uint8 _slotId) public view returns (slotsLib.sSlots memory) {
+        return slotsLib.getSlot(_slotId, slots, beaconContract);
     }
 }
 

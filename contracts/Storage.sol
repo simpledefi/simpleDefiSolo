@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
+import "./utils/slots.sol";
+
 contract Storage {
    
     uint64 public poolId;
@@ -32,4 +34,6 @@ contract Storage {
     string public exchange;    
     string public pendingCall;
     //New Variables after this only
+
+    slotsLib.slotStorage[] public slots;
 }

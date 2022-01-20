@@ -1,5 +1,7 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 interface iMasterChef{
      function pendingCake(uint256 _pid, address _user) external view returns (uint256);
      function poolInfo(uint _poolId) external view returns (address, uint,uint,uint);
