@@ -1,6 +1,7 @@
 var beaconApp = artifacts.require("combine_beacon");
 var combineApp = artifacts.require("combineApp");
 var proxyFactory = artifacts.require("proxyFactory");
+var slotsLib = artifacts.require("slotsLib");
 
 if (config.network == "development") var proxyApp = artifacts.require("combine_proxy");
 
@@ -11,6 +12,8 @@ module.exports = async function(deployer, network, accounts) {
     }
 
     await deployer.deploy(beaconApp);
+    await deployer.deploy(slotsLib);
+    await deployer.link(slotsLib,combineApp);
     await deployer.deploy(combineApp);
     
     let beacon = await beaconApp.deployed();

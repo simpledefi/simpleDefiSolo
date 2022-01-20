@@ -11,7 +11,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     event HoldBack(uint amount, uint total);
     event FeeSent(uint amount,uint total);
     event Received(address sender, uint amount);
-    event NewPool(uint oldPool, uint newPool);
+    event NewPool(uint64 oldPool, uint newPool);
     event LiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
     event Initialized(uint64 poolId, address lpContract);
 
@@ -33,10 +33,12 @@ contract combineApp is Storage, Ownable, AccessControl {
         _;
     }
 
-    modifier clearPool() {
-        if (poolId > 0) {
-            (uint a, ) = iMasterChef(chefContract).userInfo(poolId,address(this));
-            if (a != 0) revert InvestedPool(poolId);
+    modifier clearPool(uint64 _slotId) {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+
+        if (_slot.poolId > 0) {
+            (uint a, ) = iMasterChef(chefContract).userInfo(_slot.poolId,address(this));
+            if (a != 0) revert InvestedPool(_slot.poolId);
         }
         _;
     }
@@ -65,15 +67,17 @@ contract combineApp is Storage, Ownable, AccessControl {
     function removeHarvester(address _address) public onlyOwner{
         revokeRole(HARVESTER,_address);
     }
-    function newExchange(uint64 _poolId, string memory _exchangeName) public onlyOwner clearPool {
+    function newExchange(uint64 _slotId, uint64 _poolId, string memory _exchangeName) public onlyOwner clearPool(_slotId) {
+
         if (beaconContract == address(0)) revert RequiredParameter("beaconContract");
         if (bytes(_exchangeName).length == 0) revert RequiredParameter("_exchangeName");
 
         setup(_poolId, _exchangeName);
+        slotsLib.updateSlot(_slotId, _poolId, _exchangeName, slots, beaconContract);
     }
 
     function setup(uint64 _poolId, string memory _exchangeName) private  {
-        slotsLib.sSlots memory _slot = slotsLib.updateSlot(slotsLib.MAX_SLOTS+1,_poolId,_exchangeName, slots, beaconContract);
+        slotsLib.sSlots memory _slot = slotsLib.updateSlot(uint64(slotsLib.MAX_SLOTS+1),_poolId,_exchangeName, slots, beaconContract);
 
         if (msg.value > 0) {
             addFunds(_slot, msg.value);
@@ -84,7 +88,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     receive() external payable {}
 
-    function deposit(uint8 _slotId) external onlyOwner payable  {
+    function deposit(uint64 _slotId) external onlyOwner payable  {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
         uint deposit_amount = msg.value;
         uint pendingReward_val =  pendingReward(_slotId);
@@ -95,7 +99,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit Deposit(deposit_amount);
     }
 
-    function setPool(uint8 _slotId, uint64 _poolId) public allowAdmin clearPool payable {
+    function setPool(uint64 _slotId, uint64 _poolId) public allowAdmin clearPool(_slotId) payable {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
         _slot = slotsLib.updateSlot(_slotId, _poolId, _slot.exchangeName,slots, beaconContract);
         if (msg.value > 0) {
@@ -104,11 +108,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
     }
 
-    function swapPool(uint8 _slotId, uint64 _newPool) public allowAdmin {
+    function swapPool(uint64 _slotId, uint64 _newPool) public allowAdmin {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
 
         if(_newPool == _slot.poolId) revert RequiredParameter("New pool required");
-        uint64 oldPool = poolId;
+        uint64 oldPool = _slot.poolId;
         
         removeLiquidity(_slot);
         revertBalance(_slot);
@@ -123,7 +127,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit NewPool(oldPool,_newPool);
     }
     
-    function pendingReward(uint8 _slotId) public view returns (uint) {        
+    function pendingReward(uint64 _slotId) public view returns (uint) {        
         slotsLib.sSlots memory _slot = getSlot(_slotId);
         return pendingReward(_slot);
     }
@@ -138,7 +142,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         return pendingReward_val;
     }
     
-    function liquidate(uint8 _slotId) public onlyOwner lockFunction {
+    function liquidate(uint64 _slotId) public onlyOwner lockFunction {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
         do_harvest(_slot, 0);
         removeLiquidity(_slot);
@@ -161,7 +165,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit HoldBack(bal,bal);
     }
     
-    function harvest(uint8 _slotId) public lockFunction allowAdmin {
+    function harvest(uint64 _slotId) public lockFunction allowAdmin {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
         uint64 _offset = iBeacon(beaconContract).getConst('DEFAULT','HARVESTSOLOGAS');
         emit uintLog("Offset",_offset);
@@ -218,10 +222,10 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint amountB;
         uint liquidity;
 
-        if (token1 == WBNB_ADDR) {
+        if (_slot.token1 == WBNB_ADDR) {
             (amountA, amountB, liquidity) = iRouter(_slot.routerContract).addLiquidityETH{value: amount1}(_slot.token0, amount0, 0,0, address(this), block.timestamp);
         }
-        else if (token0 == WBNB_ADDR) {
+        else if (_slot.token0 == WBNB_ADDR) {
             (amountA, amountB, liquidity) = iRouter(_slot.routerContract).addLiquidityETH{value: amount0}(_slot.token1, amount1, 0,0, address(this), block.timestamp);
         }
         else {
@@ -327,7 +331,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint _removed = ERC20(_slot.lpContract).balanceOf(address(this));
         emit uintLog("_removed",_removed);
         
-        if (token1 == WBNB_ADDR)
+        if (_slot.token1 == WBNB_ADDR)
             (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidityETH(_slot.token0,_removed,0,0,address(this), deadline);
         else
             (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidity(_slot.token0,_slot.token1,_removed,0,0,address(this), deadline);
@@ -357,29 +361,34 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
     }
     
-    function cakePerBlock(uint8 _slotId) public view returns(uint) {
+    function cakePerBlock(uint64 _slotId) public view returns(uint) {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
         return iMasterChef(_slot.chefContract).cakePerBlock();
     }    
     
-    function updatePool(uint8 _slotId) public {
+    function updatePool(uint64 _slotId) public {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
 
         iMasterChef(_slot.chefContract).updatePool(_slot.poolId);
     }
     
-    function userInfo(uint8 _slotId) public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
+    function userInfo(uint64 _slotId) public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
 
-        (uint a, uint b) = iMasterChef(_slot.chefContract).userInfo(poolId,address(this));
+        (uint a, uint b) = iMasterChef(_slot.chefContract).userInfo(_slot.poolId,address(this));
         (uint c, uint d) = tokenBalance(_slot);
         uint e = ERC20(_slot.rewardToken).balanceOf(address(this));
         uint f = address(this).balance;
         return (a,b,c,d,e,f);
     }
 
-    function getSlot(uint8 _slotId) public view returns (slotsLib.sSlots memory) {
+    function getSlot(uint64 _slotId) public view returns (slotsLib.sSlots memory) {
         return slotsLib.getSlot(_slotId, slots, beaconContract);
+    }
+
+    function poolId(uint64 _slotId) public view returns (uint) {
+        slotsLib.sSlots memory _slot = getSlot(_slotId);
+        return _slot.poolId;
     }
 }
 

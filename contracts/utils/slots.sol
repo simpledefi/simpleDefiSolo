@@ -12,7 +12,7 @@ library slotsLib {
     }
 
     struct sSlots {
-        uint poolId;
+        uint64 poolId;
         string exchangeName;
         address lpContract;
         address token0;
@@ -36,18 +36,18 @@ library slotsLib {
 
     event SlotsUpdated();
 
-    function addSlot(uint _poolId, string memory _exchangeName, slotStorage[] storage slots,address beaconContract) internal returns (uint) {
-        for(uint8 i = 0;i<slots.length;i++) {
+    function addSlot(uint64 _poolId, string memory _exchangeName, slotStorage[] storage slots,address beaconContract) internal returns (uint) {
+        for(uint64 i = 0;i<slots.length;i++) {
             if (slots[i].poolId == _poolId && keccak256(bytes(slots[i].exchangeName)) == keccak256(bytes(_exchangeName))) { //this is to get around storage type differences...
                 return i;
             }
         }
         if (slots.length+1 >= MAX_SLOTS) revert MaxSlots();
-        updateSlot(MAX_SLOTS+1,_poolId,_exchangeName,slots,beaconContract);
+        updateSlot(uint64(MAX_SLOTS+1),_poolId,_exchangeName,slots,beaconContract);
         return slots.length - 1;
     }
 
-    function updateSlot(uint _slotId, uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
+    function updateSlot(uint64 _slotId, uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
         (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         (address _lpContract,uint _alloc,,) = iMasterChef(_chefContract).poolInfo(_poolId);
 
@@ -56,7 +56,7 @@ library slotsLib {
 
         if (_slotId == MAX_SLOTS+1) {
             slots.push(slotStorage(_poolId,_exchangeName,_lpContract, iLPToken(_lpContract).token0(),iLPToken(_lpContract).token1()));
-            _slotId = slots.length - 1;
+            _slotId = uint64(slots.length - 1);
         } else {
             if (_slotId >= slots.length) revert SlotOutOfBounds();
             slots[_slotId] = slotStorage(_poolId,_exchangeName,_lpContract, iLPToken(_lpContract).token0(),iLPToken(_lpContract).token1());
@@ -71,12 +71,14 @@ library slotsLib {
         }
 
         emit SlotsUpdated();
-        return sSlots(slots[_slotId].poolId,slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+        return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
     }
 
     function removeSlot(uint _slotId, slotStorage[] storage slots) internal returns (uint) {
         if (_slotId >= slots.length) revert SlotOutOfBounds();
-        slots[_slotId] = slotStorage(0,0,0,0,0);
+        slots[_slotId] = slots[slots.length-1];
+        slots.pop();
+
         emit SlotsUpdated();
         return slots.length;
     }
@@ -84,6 +86,6 @@ library slotsLib {
     function getSlot(uint _slotId, slotStorage[] memory slots, address beaconContract) internal view returns (sSlots memory) {
         if (_slotId >= slots.length) revert SlotOutOfBounds();
         (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(slots[_slotId].exchangeName);
-        return sSlots(slots[_slotId].poolId,slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+        return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
     }    
 }
