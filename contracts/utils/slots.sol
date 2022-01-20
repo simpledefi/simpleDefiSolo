@@ -31,13 +31,14 @@ library slotsLib {
 
     error RequiredParameter(string param);
     error InactivePool(uint _poolID);
-
     error MaxSlots();
     error SlotOutOfBounds();
 
+    event SlotsUpdated();
+
     function addSlot(uint _poolId, string memory _exchangeName, slotStorage[] storage slots,address beaconContract) internal returns (uint) {
         for(uint8 i = 0;i<slots.length;i++) {
-            if (slots[i].poolId == _poolId && keccak256(bytes(slots[i].exchangeName)) == keccak256(bytes(_exchangeName))) {
+            if (slots[i].poolId == _poolId && keccak256(bytes(slots[i].exchangeName)) == keccak256(bytes(_exchangeName))) { //this is to get around storage type differences...
                 return i;
             }
         }
@@ -49,7 +50,7 @@ library slotsLib {
     function updateSlot(uint _slotId, uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
         (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         (address _lpContract,uint _alloc,,) = iMasterChef(_chefContract).poolInfo(_poolId);
-        
+
         if (_lpContract == address(0)) revert RequiredParameter("_lpContract");
         if (_alloc == 0) revert InactivePool(_poolId);
 
@@ -69,7 +70,15 @@ library slotsLib {
             iLPToken(_lpContract).approve(_routerContract,MAX_INT);                            
         }
 
+        emit SlotsUpdated();
         return sSlots(slots[_slotId].poolId,slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+    }
+
+    function removeSlot(uint _slotId, slotStorage[] storage slots) internal returns (uint) {
+        if (_slotId >= slots.length) revert SlotOutOfBounds();
+        slots[_slotId] = slotStorage(0,0,0,0,0);
+        emit SlotsUpdated();
+        return slots.length;
     }
 
     function getSlot(uint _slotId, slotStorage[] memory slots, address beaconContract) internal view returns (sSlots memory) {

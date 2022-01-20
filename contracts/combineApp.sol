@@ -144,7 +144,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         removeLiquidity(_slot);
         revertBalance(_slot);        
         uint _total = address(this).balance;
-        
+        slotsLib.removeSlot(_slotId,slots);
         payable(owner()).transfer(_total);
         emit uintLog("Liquidate Total",_total);
     }
