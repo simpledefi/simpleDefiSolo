@@ -37,7 +37,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         slotsLib.sSlots memory _slot = getSlot(_slotId);
 
         if (_slot.poolId > 0) {
-            (uint a, ) = iMasterChef(chefContract).userInfo(_slot.poolId,address(this));
+            (uint a, ) = iMasterChef(_slot.chefContract).userInfo(_slot.poolId,address(this));
             if (a != 0) revert InvestedPool(_slot.poolId);
         }
         _;
@@ -134,7 +134,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
     function pendingReward(slotsLib.sSlots memory _slot) private view returns (uint) {
         // uint pendingReward_val =  iMasterChef(chefContract).pendingCake(poolId,address(this));
-        (, bytes memory data) = chefContract.staticcall(abi.encodeWithSignature(_slot.pendingCall, _slot.poolId,address(this)));
+        (, bytes memory data) = _slot.chefContract.staticcall(abi.encodeWithSignature(_slot.pendingCall, _slot.poolId,address(this)));
         uint pendingReward_val = abi.decode(data,(uint256));
         if (pendingReward_val == 0) {
             pendingReward_val += ERC20(_slot.rewardToken).balanceOf(address(this));
@@ -221,12 +221,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint amountA;
         uint amountB;
         uint liquidity;
-
-        if (_slot.token1 == WBNB_ADDR) {
-            (amountA, amountB, liquidity) = iRouter(_slot.routerContract).addLiquidityETH{value: amount1}(_slot.token0, amount0, 0,0, address(this), block.timestamp);
-        }
-        else if (_slot.token0 == WBNB_ADDR) {
-            (amountA, amountB, liquidity) = iRouter(_slot.routerContract).addLiquidityETH{value: amount0}(_slot.token1, amount1, 0,0, address(this), block.timestamp);
+        
+        if (_slot.token1 == WBNB_ADDR || _slot.token0 == WBNB_ADDR) {
+            (amount0,amount1) = _slot.token0 == WBNB_ADDR?(amount0,amount1):(amount1,amount0);
+            address token = _slot.token0 == WBNB_ADDR?_slot.token1:_slot.token0;
+            (amountA, amountB, liquidity) = iRouter(_slot.routerContract).addLiquidityETH{value: amount0}(token, amount1, 0,0, address(this), block.timestamp);
         }
         else {
             ( amountA,  amountB, liquidity) = iRouter(_slot.routerContract).addLiquidity(_slot.token0, _slot.token1, amount0, amount1, 0, 0, address(this), block.timestamp);
