@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.7;
 import "./Storage.sol";
 interface iApp {
     function  initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) external payable;
