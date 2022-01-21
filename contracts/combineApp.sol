@@ -222,12 +222,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint amountB;
         uint liquidity;
         
-        uint bal0 = ERC20(_slot.token0).balanceOf(address(this));
-        uint bal1 = ERC20(_slot.token1).balanceOf(address(this));
-        uint bal =address(this).balance;
-        
-        emit HoldBack(bal0,bal1);
-
         if (_slot.token1 == WBNB_ADDR || _slot.token0 == WBNB_ADDR) {
             (amount0,amount1) = _slot.token0 == WBNB_ADDR?(amount0,amount1):(amount1,amount0);
             address token = _slot.token0 == WBNB_ADDR?_slot.token1:_slot.token0;

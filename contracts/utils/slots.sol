@@ -62,14 +62,16 @@ library slotsLib {
             slots[_slotId] = slotStorage(_poolId,_exchangeName,_lpContract, iLPToken(_lpContract).token0(),iLPToken(_lpContract).token1());
         }     
 
+        
         if (ERC20(_rewardToken).allowance(address(this), _routerContract) == 0) {
+            ERC20(slots[_slotId].token0).approve(_routerContract,MAX_INT);
+            ERC20(slots[_slotId].token1).approve(_routerContract,MAX_INT);
             ERC20(_rewardToken).approve(address(this),MAX_INT);
             ERC20(_rewardToken).approve(_routerContract,MAX_INT);
             iLPToken(_lpContract).approve(address(this),MAX_INT);
             iLPToken(_lpContract).approve(_chefContract,MAX_INT);        
             iLPToken(_lpContract).approve(_routerContract,MAX_INT);                            
         }
-
         emit SlotsUpdated();
         return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
     }
