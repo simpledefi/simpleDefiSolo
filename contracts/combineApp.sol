@@ -5,24 +5,22 @@ import "./Interfaces.sol";
 import "./Storage.sol";
 
 contract combineApp is Storage, Ownable, AccessControl {
-    event uintLog( string message, uint value);
-    event uintLog( string message, uint[] value);
-    event Deposit(uint amount);
-    event HoldBack(uint amount, uint total);
-    event FeeSent(uint amount,uint total);
-    event Received(address sender, uint amount);
-    event NewPool(uint64 oldPool, uint newPool);
-    event LiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
-    event Initialized(uint64 poolId, address lpContract);
+    event sdUintLog( string message, uint value);
+    event sdUintLog( string message, uint[] value);
+    event sdDeposit(uint amount);
+    event sdHoldBack(uint amount, uint total);
+    event sdFeeSent(uint amount,uint total);
+    event sdNewPool(uint64 oldPool, uint newPool);
+    event sdLiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
+    event sdInitialized(uint64 poolId, address lpContract);
 
-    error Locked();
-    error InitializedError();
-    error InsufficentBalance();
-    error RequiredParameter(string param);
-    error InvestedPool(uint _poolID);
+    error sdLocked();
+    error sdInitializedError();
+    error sdInsufficentBalance();
+    error sdRequiredParameter(string param);
     
     modifier lockFunction() {
-        if (_locked == true) revert Locked();
+        if (_locked == true) revert sdLocked();
         _locked = true;
         _;
         _locked = false;
@@ -34,7 +32,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) public onlyOwner payable {
-        if (_initialized == true) revert InitializedError();
+        if (_initialized == true) revert sdInitializedError();
         _initialized = true;
         beaconContract = _beacon;
 
@@ -62,9 +60,9 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         if (msg.value > 0) {
             addFunds(_slot, msg.value);
-            emit Deposit(msg.value);
+            emit sdDeposit(msg.value);
         }
-        emit Initialized(_poolId,_slot.lpContract);
+        emit sdInitialized(_poolId,_slot.lpContract);
     }
     
     receive() external payable {}
@@ -77,26 +75,26 @@ contract combineApp is Storage, Ownable, AccessControl {
             deposit_amount = deposit_amount + do_harvest(_slot, 0);
         }
         addFunds(_slot, deposit_amount);
-        emit Deposit(deposit_amount);
+        emit sdDeposit(deposit_amount);
     }
 
     //TODO: Big change here to add from and to
     function swapPool(uint64 _fromPoolId, string memory _fromExchangeName, uint64 _toPoolId, string memory _toExchangeName) public allowAdmin {
         slotsLib.sSlots memory _slot = getSlot(_fromPoolId, _fromExchangeName);
         
-        if(_toPoolId == _slot.poolId) revert RequiredParameter("New pool required");
+        if(_toPoolId == _slot.poolId) revert sdRequiredParameter("New pool required");
         
         removeLiquidity(_slot);
         revertBalance(_slot);
         
         uint _bal = address(this).balance;
-        if (_bal==0) revert InsufficentBalance();
+        if (_bal==0) revert sdInsufficentBalance();
         
         // setLP(_newPool);
         slotsLib.swapSlot(_fromPoolId, _fromExchangeName,_toPoolId, _toExchangeName,slots, beaconContract);
         addFunds(_slot,_bal);
         
-        emit NewPool(_fromPoolId,_toPoolId);
+        emit sdNewPool(_fromPoolId,_toPoolId);
     }
     
     function pendingReward(uint64 _poolId, string memory _exchangeName) public view returns (uint) {        
@@ -122,25 +120,24 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint _total = address(this).balance;
         slotsLib.removeSlot(_slot.poolId, _slot.exchangeName,slots);
         payable(owner()).transfer(_total);
-        emit uintLog("Liquidate Total",_total);
+        emit sdUintLog("Liquidate Total",_total);
     }
     
     function setHoldBack(uint64 _holdback) public onlyOwner {
         holdBack = _holdback;
-        emit uintLog("holdback",_holdback);
+        emit sdUintLog("holdback",_holdback);
     }
     
     function sendHoldBack() public onlyOwner lockFunction{
         uint bal = address(this).balance;
-        if (bal == 0) revert InsufficentBalance();
+        if (bal == 0) revert sdInsufficentBalance();
         payable(owner()).transfer(bal);
-        emit HoldBack(bal,bal);
+        emit sdHoldBack(bal,bal);
     }
     
     function harvest(uint64  _poolId, string memory _exchangeName) public lockFunction allowAdmin {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
         uint64 _offset = iBeacon(beaconContract).getConst('DEFAULT','HARVESTSOLOGAS');
-        emit uintLog("Offset",_offset);
         uint startGas = gasleft() + 21000 + _offset;
         uint split = do_harvest(_slot, 1);
         
@@ -161,7 +158,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function addFunds(slotsLib.sSlots memory _slot, uint inValue) private {
-        if (inValue==0) revert InsufficentBalance();
+        if (inValue==0) revert sdInsufficentBalance();
 
         uint amount0;
         uint amount1;
@@ -204,11 +201,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
 
         iMasterChef(_slot.chefContract).deposit(_slot.poolId,liquidity);
-        emit LiquidityProvided(amountA, amountB, liquidity);
+        emit sdLiquidityProvided(amountA, amountB, liquidity);
     }
     
     function swap(slotsLib.sSlots memory _slot, uint amountIn, address[] memory path) private returns (uint){
-        if (amountIn == 0) revert InsufficentBalance();
+        if (amountIn == 0) revert sdInsufficentBalance();
         uint pathLength = (_slot.intermediateToken != address(0) && path[0] != _slot.intermediateToken && path[1] != _slot.intermediateToken) ? 3 : 2;
         address[] memory swapPath = new address[](pathLength);
         
@@ -276,7 +273,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         if(feeAmount > 0 && _bal > 0) {
             payable(address(feeCollector)).transfer(feeAmount);
-            emit FeeSent(feeAmount,pendingCake);
+            emit sdFeeSent(feeAmount,pendingCake);
         }
 
         uint finalReward = pendingCake - feeAmount;
@@ -285,7 +282,7 @@ contract combineApp is Storage, Ownable, AccessControl {
             uint holdbackAmount = (finalReward/100) * (holdBack/10**18);
             finalReward = finalReward - holdbackAmount;
             payable(owner()).transfer(holdbackAmount);
-            emit HoldBack(holdbackAmount,finalReward);
+            emit sdHoldBack(holdbackAmount,finalReward);
 
         }
         return finalReward;
@@ -300,7 +297,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         iMasterChef(_slot.chefContract).withdraw(_slot.poolId,_lpBal);
         
         uint _removed = ERC20(_slot.lpContract).balanceOf(address(this));
-        emit uintLog("_removed",_removed);
+        emit sdUintLog("_removed",_removed);
         
         if (_slot.token1 == WBNB_ADDR)
             (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidityETH(_slot.token0,_removed,0,0,address(this), deadline);
