@@ -35,13 +35,13 @@ library slotsLib {
     error SlotOutOfBounds();
     event SlotsUpdated();
 
-    function addSlot(uint64 _poolId, string memory _exchangeName, slotStorage[] storage slots,address beaconContract) internal returns (uint) {
-        uint _slotId = find_slot(_poolId, _exchangeName, slots);
-        if (_slotId != MAX_SLOTS) return _slotId;
+    function addSlot(uint64 _poolId, string memory _exchangeName, slotStorage[] storage slots,address beaconContract) internal returns (uint64) {
+        uint64 _slotId = find_slot(_poolId, _exchangeName, slots);
+        if (_slotId != MAX_SLOTS+1) return _slotId;
 
         if (slots.length+1 >= MAX_SLOTS) revert MaxSlots();
         updateSlot(MAX_SLOTS+1,_poolId,_exchangeName,slots,beaconContract);
-        return slots.length - 1;
+        return uint64(slots.length - 1);
     }
 
     function swapSlot(uint _fromPoolId, string memory _fromExchangeName, uint _toPoolId, string memory _toExchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
@@ -104,4 +104,17 @@ library slotsLib {
         (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(slots[_slotId].exchangeName);
         return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
     }    
+
+    function getDepositSlot(uint64 _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
+        uint64 _slotId = find_slot(_poolId,_exchangeName,slots);
+        (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+        if (_slotId == MAX_SLOTS+1) {
+            _slotId = addSlot(_poolId,_exchangeName,slots,beaconContract);
+            return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+        }
+        else {
+            return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+        }
+    }    
+
 }

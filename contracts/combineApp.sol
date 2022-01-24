@@ -68,7 +68,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     receive() external payable {}
 
     function deposit(uint64 _poolId, string memory _exchangeName) external onlyOwner payable  {
-        slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
+        slotsLib.sSlots memory _slot = slotsLib.getDepositSlot(_poolId, _exchangeName,slots, beaconContract);
         uint deposit_amount = msg.value;
         uint pendingReward_val =  pendingReward(_slot);
         if (pendingReward_val > 0) {

@@ -90,93 +90,74 @@ contract('combineApp', accounts => {
         userinfo = await app.userInfo(pool_ID, exchangeName);
         console.log("AFTER:", JSON.stringify(userinfo));
         console.log(userinfo[0],startval);
-        assert(userinfo[0] > startval, "Value Should increase");
+        assert(BigInt(userinfo[0]) > BigInt(startval),"Value Should increase");
     });
 
-    // it("Should handle harvest", async() => {
-    //     let pc = await app.pendingReward(pool_ID, exchangeName);
-    //     console.log("Pending:",pc);
-    //     assert(pc == 0, "Initial Pending Cake should be 0 showing: " + pc.toString());
+    it("Should handle harvest", async() => {
+        let pc = await app.pendingReward(pool_ID, exchangeName);
+        console.log("Pending:",pc);
+        assert(pc == 0, "Initial Pending Cake should be 0 showing: " + pc.toString());
 
-    //     await app.updatePool(pool_ID, exchangeName);
-    //     await app.updatePool(pool_ID, exchangeName);
-    //     await app.updatePool(pool_ID, exchangeName);
-    //     await app.updatePool(pool_ID, exchangeName);
-    //     pc = await app.pendingReward(pool_ID, exchangeName);
-    //     console.log("PC", pc.toString());
-    //     assert(pc != 0, "Pending Cake should not be 0");
+        await app.updatePool(pool_ID, exchangeName);
+        await app.updatePool(pool_ID, exchangeName);
+        await app.updatePool(pool_ID, exchangeName);
+        await app.updatePool(pool_ID, exchangeName);
+        pc = await app.pendingReward(pool_ID, exchangeName);
+        console.log("PC", pc.toString());
+        assert(pc != 0, "Pending Cake should not be 0");
 
-    //     let fee0 = await web3.eth.getBalance(accounts[2]);
-    //     await app.harvest(pool_ID, exchangeName);
-    //     pc = await app.pendingReward(pool_ID, exchangeName);
-    //     assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
+        let fee0 = await web3.eth.getBalance(accounts[2]);
+        await app.harvest(pool_ID, exchangeName);
+        pc = await app.pendingReward(pool_ID, exchangeName);
+        console.log("PC after:", pc.toString());
+        assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
 
-    //     let fee1 = await web3.eth.getBalance(accounts[2]);
-    //     assert(fee1 > fee0, "Fee balance should have increased");
-    // });
+        let fee1 = await web3.eth.getBalance(accounts[2]);
+        assert(fee1 > fee0, "Fee balance should have increased");
+    });
 
-    // it("Should clear out cake after deposit", async() => {
-    //     await app.updatePool(pool_ID, exchangeName);
-    //     await app.updatePool(pool_ID, exchangeName);
-    //     let pc0 = await app.pendingReward(pool_ID, exchangeName);
-    //     await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
-    //     pc1 = await app.pendingReward(pool_ID, exchangeName);
-    //     assert(pc1 < pc0 && pc0>0, `Pending cake not cleared out ${pc1} ${pc0}`);
-    // });
+    it("Should clear out cake after deposit", async() => {
+        await app.updatePool(pool_ID, exchangeName);
+        await app.updatePool(pool_ID, exchangeName);
+        let pc0 = await app.pendingReward(pool_ID, exchangeName);
+        await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
+        let pc1 = await app.pendingReward(pool_ID, exchangeName);
+        assert(pc1 < pc0 && pc0>0, `Pending cake not cleared out ${pc1} ${pc0}`);
+    });
 
-    // it("Should allow a liquidate from owner or admin only", async() => {
-    //     await app.updatePool(pool_ID, exchangeName);
-    //     let pc = await app.pendingReward(pool_ID, exchangeName);
-    //     assert(pc != 0, "Pending Cake should not be 0");
+    it("Should allow a liquidate from owner or admin only", async() => {
+        await app.updatePool(pool_ID, exchangeName);
+        let pc = await app.pendingReward(pool_ID, exchangeName);
+        assert(pc != 0, "Pending Cake should not be 0");
 
-    //     try {
-    //         await app.liquidate(pool_ID, exchangeName,{ from: accounts[1] });
-    //         assert(false, "Allows liquidation from user not owner");
-    //     } catch (e) {
-    //         assert(e.message.includes("caller is not the owner"), "Allows liquidation from user not owner");
-    //     }
+        try {
+            await app.liquidate(pool_ID, exchangeName,{ from: accounts[1] });
+            assert(false, "Allows liquidation from user not owner");
+        } catch (e) {
+            assert(e.message.includes("caller is not the owner"), "Allows liquidation from user not owner");
+        }
 
-    //     let balance0 = await web3.eth.getBalance(accounts[0]);
-    //     // console.log(accounts[0], balance);
-    //     await app.liquidate(pool_ID, exchangeName);
+        let balance0 = await web3.eth.getBalance(accounts[0]);
+        // console.log(accounts[0], balance);
+        await app.liquidate(pool_ID, exchangeName);
 
-    //     let balance1 = await web3.eth.getBalance(accounts[0]);
-    //     assert(balance1 > balance0, "Funds not liquidated");
-    // });
+        let balance1 = await web3.eth.getBalance(accounts[0]);
+        assert(balance1 > balance0, "Funds not liquidated");
+    });
 
-    // it("Should allow pool swap", async() => {
-    //     //0xc54c27fc00000000000000000000000000000000000000000000000000000000000001bf
-    //     await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
-    //     try {
-    //         await app.swapPool(pool_ID, exchangeName,swap_ID);
-    //         assert(false,`Allowed Swap Pool to inactive pool ${pool_ID} `);
-    //     }
-    //     catch (e) {
-    //         assert(errorSig(e,"InactivePool(uint _poolID)","0xc54c27fc"), "Allowed Reinitialization");
-    //     }
-    //     // let pid = await app.poolId();
-    //     // assert(pid == swap_ID, "Pool did not swap");
-    // });
-
-    // it("Should allow set pool without balance", async() => {
-    //     let userinfo = await app.userInfo(pool_ID, exchangeName);
-    //     assert(userinfo[0] > 0, "Initial value should not be 0");
-    //     try {
-    //         await app.setPool(pool_ID, exchangeName,pool_ID - 11);
-    //     } catch (e) {
-    //         assert(errorSig(e,"InvestedPool(uint _poolID)","0x2154a68b"), "Should not be able to set pool id with balance");
-    //     }
-    //     await app.liquidate(pool_ID, exchangeName);
-
-    //     try {
-    //         await app.setPool(pool_ID, exchangeName,new_Pool);
-    //     } catch (e) {
-    //         assert(errorSig(e,"InvestedPool(uint _poolID)","0x2154a68b"), "Liquidation did not clear balance");
-    //     }
-    //     let pid = await app.poolId(pool_ID, exchangeName);
-
-    //     assert(pid == new_Pool, "Pool id did not get properly set");
-    // });
+    it("Should allow pool swap", async() => {
+        //0xc54c27fc00000000000000000000000000000000000000000000000000000000000001bf
+        await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
+        try {
+            await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName);
+            assert(false,`Allowed Swap Pool to inactive pool ${pool_ID} `);
+        }
+        catch (e) {
+            assert(errorSig(e,"InactivePool(uint _poolID)","0xc54c27fc"), "Allowed Reinitialization");
+        }
+        // let pid = await app.poolId();
+        // assert(pid == swap_ID, "Pool did not swap");
+    });
 
     // it("Should allow deposit into new pool", async() => {
     //     let userinfo = await app.userInfo(pool_ID, exchangeName);
