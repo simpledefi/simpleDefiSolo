@@ -28,7 +28,6 @@ library slotsLib {
     uint64 constant MAX_SLOTS = 100;
     uint256 constant MAX_INT = type(uint).max;
 
-
     error RequiredParameter(string param);
     error InactivePool(uint _poolID);
     error MaxSlots();
@@ -67,14 +66,16 @@ library slotsLib {
 
         
         if (ERC20(_rewardToken).allowance(address(this), _routerContract) == 0) {
-            ERC20(slots[_slotId].token0).approve(_routerContract,MAX_INT);
-            ERC20(slots[_slotId].token1).approve(_routerContract,MAX_INT);
             ERC20(_rewardToken).approve(address(this),MAX_INT);
             ERC20(_rewardToken).approve(_routerContract,MAX_INT);
-            iLPToken(_lpContract).approve(address(this),MAX_INT);
-            iLPToken(_lpContract).approve(_chefContract,MAX_INT);        
-            iLPToken(_lpContract).approve(_routerContract,MAX_INT);                            
         }
+
+        ERC20(slots[_slotId].token0).approve(_routerContract,MAX_INT);
+        ERC20(slots[_slotId].token1).approve(_routerContract,MAX_INT);
+        iLPToken(_lpContract).approve(address(this),MAX_INT);
+        iLPToken(_lpContract).approve(_chefContract,MAX_INT);        
+        iLPToken(_lpContract).approve(_routerContract,MAX_INT);                            
+
         emit SlotsUpdated();
         return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
     }
@@ -89,7 +90,6 @@ library slotsLib {
         return slots.length;
     }
 
-
     function find_slot(uint _poolId, string memory _exchangeName, slotStorage[] storage slots) private view returns (uint64){
         for(uint64 i = 0;i<slots.length;i++) {
             if (slots[i].poolId == _poolId && keccak256(bytes(slots[i].exchangeName)) == keccak256(bytes(_exchangeName))) { //this is to get around storage type differences...
@@ -100,21 +100,19 @@ library slotsLib {
     }
     function getSlot(uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal view returns (sSlots memory) {
         uint64 _slotId = find_slot(_poolId,_exchangeName,slots);
-        if (_slotId >= slots.length) revert SlotOutOfBounds();
+        if (_slotId == MAX_SLOTS+1) return (sSlots(_slotId,"",address(0),address(0),address(0),address(0),address(0),address(0),"",address(0)));
         (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(slots[_slotId].exchangeName);
         return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
     }    
 
     function getDepositSlot(uint64 _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
         uint64 _slotId = find_slot(_poolId,_exchangeName,slots);
-        (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         if (_slotId == MAX_SLOTS+1) {
-            _slotId = addSlot(_poolId,_exchangeName,slots,beaconContract);
-            return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+            return updateSlot(uint64(slotsLib.MAX_SLOTS+1), _poolId, _exchangeName, slots, beaconContract);
         }
         else {
+            (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
             return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
         }
     }    
-
 }

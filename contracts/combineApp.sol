@@ -78,7 +78,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit sdDeposit(deposit_amount);
     }
 
-    //TODO: Big change here to add from and to
     function swapPool(uint64 _fromPoolId, string memory _fromExchangeName, uint64 _toPoolId, string memory _toExchangeName) public allowAdmin {
         slotsLib.sSlots memory _slot = getSlot(_fromPoolId, _fromExchangeName);
         
@@ -90,7 +89,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint _bal = address(this).balance;
         if (_bal==0) revert sdInsufficentBalance();
         
-        // setLP(_newPool);
         slotsLib.swapSlot(_fromPoolId, _fromExchangeName,_toPoolId, _toExchangeName,slots, beaconContract);
         addFunds(_slot,_bal);
         
@@ -103,7 +101,6 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 
     function pendingReward(slotsLib.sSlots memory _slot) private view returns (uint) {
-        // uint pendingReward_val =  iMasterChef(chefContract).pendingCake(poolId,address(this));
         (, bytes memory data) = _slot.chefContract.staticcall(abi.encodeWithSignature(_slot.pendingCall, _slot.poolId,address(this)));
         uint pendingReward_val = abi.decode(data,(uint256));
         if (pendingReward_val == 0) {
@@ -119,6 +116,9 @@ contract combineApp is Storage, Ownable, AccessControl {
         revertBalance(_slot);        
         uint _total = address(this).balance;
         slotsLib.removeSlot(_slot.poolId, _slot.exchangeName,slots);
+
+        _total = sendFee("LIQUIDATE",_total,0);
+
         payable(owner()).transfer(_total);
         emit sdUintLog("Liquidate Total",_total);
     }
@@ -190,7 +190,8 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint amountA;
         uint amountB;
         uint liquidity;
-        
+                
+
         if (_slot.token1 == WBNB_ADDR || _slot.token0 == WBNB_ADDR) {
             (amount0,amount1) = _slot.token0 == WBNB_ADDR?(amount0,amount1):(amount1,amount0);
             address token = _slot.token0 == WBNB_ADDR?_slot.token1:_slot.token0;
@@ -262,22 +263,8 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         pendingCake = swap(_slot, pendingCake,path);
         
-        uint64 fee = iBeacon(beaconContract).getFee('PANCAKESWAP','HARVEST',owner());
-        uint feeAmount = ((pendingCake * fee)/100e18) + ((lastGas * tx.gasprice)*10e8);
-
-        if (feeAmount > pendingCake) {
-            feeAmount = pendingCake;
-        }
-
-        uint _bal = address(this).balance;
-
-        if(feeAmount > 0 && _bal > 0) {
-            payable(address(feeCollector)).transfer(feeAmount);
-            emit sdFeeSent(feeAmount,pendingCake);
-        }
-
-        uint finalReward = pendingCake - feeAmount;
-
+        uint finalReward = sendFee('HARVEST',pendingCake, ((lastGas * tx.gasprice)*10e8));
+        
         if (holdBack > 0) {
             uint holdbackAmount = (finalReward/100) * (holdBack/10**18);
             finalReward = finalReward - holdbackAmount;
@@ -342,12 +329,25 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     function userInfo(uint64  _poolId, string memory _exchangeName) public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
-
+        if (_slot.poolId == slotsLib.MAX_SLOTS+1)  return (0,0,0,0,0,0);
+        
         (uint a, uint b) = iMasterChef(_slot.chefContract).userInfo(_slot.poolId,address(this));
         (uint c, uint d) = tokenBalance(_slot);
         uint e = ERC20(_slot.rewardToken).balanceOf(address(this));
         uint f = address(this).balance;
         return (a,b,c,d,e,f);
+    }
+    function sendFee(string memory _type, uint _total, uint _extra) private returns (uint){
+        uint64 fee = iBeacon(beaconContract).getFee('DEFAULT',_type,owner());
+        uint feeAmount = ((_total * fee)/100e18) + _extra;
+        if (feeAmount > _total) feeAmount = _total;
+        
+        if(feeAmount > 0) {
+            _total = _total - feeAmount;
+            payable(address(feeCollector)).transfer(feeAmount);
+            emit sdFeeSent(feeAmount,_total);
+        }
+        return _total;
     }
 
     function getSlot(uint64 _poolId, string memory _exchangeName) public view returns (slotsLib.sSlots memory) {
@@ -355,3 +355,4 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
 }
 
+    

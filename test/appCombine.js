@@ -28,11 +28,18 @@ function errorSig(e,sig,hex="") {
 let app;
 
 contract('combineApp', accounts => {
-    let pool_ID = 505; //BUSD-BNB
+    let pool_ID = 252; //BUSD-BNB
     let exchangeName = "PANCAKESWAP";
     let new_Pool = 251;
-    let swap_ID = 252;
+    let swap_ID = 251;
 
+    // pool_ID = swap_ID
+    it("Fee should be immediately set", async() => {
+        const beacon = await combine_beacon.deployed();
+        await beacon.setFee('DEFAULT', 'HARVEST', amt(10), 0);
+        let fee = await beacon.getFee('DEFAULT', 'HARVEST', accounts[0]);
+        assert(fee == amt(10), "Fee Not Set");
+    });
 
     it('should deploy combineApp with initial deposit of 125', async () => {
         let pF = await proxyFactory.deployed();
@@ -45,13 +52,12 @@ contract('combineApp', accounts => {
         console.log("Done deploy")
     });    
 
-
-    it("Fee should be immediately set", async() => {
-        const beacon = await combine_beacon.deployed();
-        await beacon.setFee('PANCAKESWAP', 'HARVEST', amt(10), 0);
-        let fee = await beacon.getFee('PANCAKESWAP', 'HARVEST', accounts[0]);
-        assert(fee == amt(10), "Fee Not Set");
+    it("Should handle deposit", async() => {
+        await app.deposit(pool_ID, exchangeName,{ value: amt(5) });
+        let userinfo = await app.userInfo(new_Pool, exchangeName);
+        console.log("AFTER:", JSON.stringify(userinfo));
     });
+
 
     it("Should not allow reinitialization", async() => {
         try {
@@ -146,7 +152,6 @@ contract('combineApp', accounts => {
     });
 
     it("Should allow pool swap", async() => {
-        //0xc54c27fc00000000000000000000000000000000000000000000000000000000000001bf
         await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
         try {
             await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName);
@@ -155,48 +160,49 @@ contract('combineApp', accounts => {
             console.log(e);
             if (e) assert(errorSig(e,"InactivePool(uint _poolID)","0xc54c27fc"), "Allowed Reinitialization");
         }
-        // let pid = await app.poolId();
-        // assert(pid == swap_ID, "Pool did not swap");
     });
 
     it("Should allow deposit into new pool", async() => {
         let userinfo = await app.userInfo(swap_ID, exchangeName);
         let balance0 = userinfo[0];
+        console.log("Before Deposit");
         await app.deposit(swap_ID, exchangeName,{ value: 1 * (10 ** 18) });
+        console.log("After Deposit");
         userinfo = await app.userInfo(swap_ID, exchangeName);
         assert(userinfo[0] > balance0, "Balance should have increased");
+        pool_ID = swap_ID;
     });
 
-    // it("Should handle handle harvest in new pool", async() => {
-    //     pc0 = await app.pendingReward(pool_ID, exchangeName);
-    //     await app.updatePool(pool_ID, exchangeName);
-    //     pc1 = await app.pendingReward(pool_ID, exchangeName);
-    //     assert(pc1 > pc0, "Pending Cake should increase");
+    it("Should handle handle harvest in new pool", async() => {
+        pc0 = await app.pendingReward(pool_ID, exchangeName);
+        await app.updatePool(pool_ID, exchangeName);
+        pc1 = await app.pendingReward(pool_ID, exchangeName);
+        assert(pc1 > pc0, "Pending Cake should increase");
 
-    //     fee0 = await web3.eth.getBalance(accounts[2]);
-    //     await app.harvest(pool_ID, exchangeName);
-    //     pc = await app.pendingReward(pool_ID, exchangeName);
-    //     assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
+        fee0 = await web3.eth.getBalance(accounts[2]);
+        await app.harvest(pool_ID, exchangeName);
+        pc = await app.pendingReward(pool_ID, exchangeName);
+        assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
 
-    //     fee1 = await web3.eth.getBalance(accounts[2]);
-    //     assert(fee1 > fee0, "Fee balance should have increased");
-    // });
+        fee1 = await web3.eth.getBalance(accounts[2]);
+        assert(fee1 > fee0, "Fee balance should have increased");
+    });
 
-    // it("Should reject deposit from 3rd party", async() => {
-    //     try {
-    //         await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18), from: accounts[2] });
-    //     } catch (e) {
-    //         assert(e.message.includes("caller is not the owner"), "Allows deposit from 3rd party");
-    //     }
-    // });
+    it("Should reject deposit from 3rd party", async() => {
+        try {
+            await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18), from: accounts[2] });
+        } catch (e) {
+            assert(e.message.includes("caller is not the owner"), "Allows deposit from 3rd party");
+        }
+    });
 
-    // it("Should disallow allow 3rd Party to set holdback", async() => {
-    //     try {
-    //         await app.setHoldBack((1 * (10 ** 18)).toString(), { from: accounts[2] });
-    //     } catch (e) {
-    //         assert(e.message.includes("caller is not the owner"), "Allows setHoldBack from 3rd party");
-    //     }
-    // });
+    it("Should disallow allow 3rd Party to set holdback", async() => {
+        try {
+            await app.setHoldBack((1 * (10 ** 18)).toString(), { from: accounts[2] });
+        } catch (e) {
+            assert(e.message.includes("caller is not the owner"), "Allows setHoldBack from 3rd party");
+        }
+    });
 
     // it("Should disallow allow 3rd Party to call rescue token", async() => {
     //     try {
