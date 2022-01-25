@@ -247,13 +247,13 @@ contract('combineApp', accounts => {
 
     if (1==1) {    
         it("should set new exchange",async() => {
-            console.log("Switching to babyswap")
-    
+            
             await app.liquidate(pool_ID, exchangeName);
             pool_ID = 132; //babyswap  
             new_Pool = 131;
-            swap_ID = 130;            
-            exchangeName = "BABYSWAP";
+            swap_ID = 134;            
+            exchangeName = "APESWAP";
+            console.log("Switching to",exchangeName)
         });
         
         it("Should handle deposit", async() => {
@@ -320,12 +320,10 @@ contract('combineApp', accounts => {
         });
 
         it("Should allow pool swap", async() => {
-            pool_ID += 1;
             console.log("DEPOSIT INFO:", pool_ID, exchangeName);
-            await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
-            await app.swapPool(pool_ID, exchangeName,swap_ID);
-            let pid = await app.poolId(pool_ID, exchangeName);
-            assert(pid == swap_ID, "Pool did not swap");
+            await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
+            await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName);
+            pool_ID = swap_ID;
         });
 
 
@@ -335,7 +333,6 @@ contract('combineApp', accounts => {
             await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
             userinfo = await app.userInfo(pool_ID, exchangeName);
             assert(userinfo[0] > balance0, "Balance should have increased");
-
         });
 
         it("Should handle handle harvest in new pool", async() => {
@@ -389,17 +386,17 @@ contract('combineApp', accounts => {
             await app.updatePool(pool_ID, exchangeName);
             await app.updatePool(pool_ID, exchangeName);
             await app.updatePool(pool_ID, exchangeName);
-            result = await app.harvest(pool_ID, exchangeName);
-            truffleAssert.eventEmitted(result, "HoldBack", (ev) => {
+            let result = await app.harvest(pool_ID, exchangeName);
+            truffleAssert.eventEmitted(result, "sdHoldBack", (ev) => {
                 return ev.amount > 0;
             });
 
-            await app.setHoldBack(pool_ID, exchangeName);
+            await app.setHoldBack(0);
             await app.updatePool(pool_ID, exchangeName);
             await app.updatePool(pool_ID, exchangeName);
             await app.updatePool(pool_ID, exchangeName);
             result = await app.harvest(pool_ID, exchangeName);
-            truffleAssert.eventNotEmitted(result, "HoldBack");
+            truffleAssert.eventNotEmitted(result, "sdHoldBack");
         });
 
         it("Should have no WBNB left in the token", async() => {

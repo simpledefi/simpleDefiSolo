@@ -46,11 +46,11 @@ module.exports = async function(deployer, network, accounts) {
         'MULTIEXCHANGE',
     );
 
-    console.log("Setting up APESWAP");
+    console.log("Setting Apeswap");
     await beacon.setExchangeInfo('APESWAP', // really BABYSWAP
         '0x5c8D727b265DBAfaba67E050f2f739cAeEB4A6F9', //chefContract
         '0xcF0feBd3f17CEf5b47b0cD257aCf6025c5BFf3b7', //routerContract
-        '0x53E562b9B7E5E94b81f10e96Ee70Ad06df3D2657', //rewardToken
+        '0x603c7f932ED1fc6575303D8Fb018fDCBb0f39a95', //rewardToken
         'pendingCake(uint256,address)', //pendingCall
         '0x0000000000000000000000000000000000000000', //intermediateToken
         'MULTIEXCHANGE',
