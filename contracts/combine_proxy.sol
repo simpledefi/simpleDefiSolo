@@ -17,8 +17,15 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         _;
     }
 
+    error sdInitializedError();
+
     receive() external payable {}
-    constructor(string memory _exchange, address beacon, address _owner) {
+
+    constructor () {}
+
+    function initialize (string memory _exchange, address beacon, address _owner) public {
+        if (_initialized == true) revert sdInitializedError();
+
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
         require(beacon != address(0), "Beacon Contract required");
@@ -92,13 +99,15 @@ contract proxyFactory is Ownable {
         return proxyContracts[_user][proxyContracts[_user].length - 1];
     }
     
-    function initialize(uint64  _pid, string memory _exchange) public payable returns (address) {
+    function initialize(uint64  _pid, string memory _exchange) public payable returns (address) {        
         require(_pid != 0, "Pool ID required");
         require(beaconContract != address(0), "Beacon Contract required");
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
         string memory _contract = prBeacon(beaconContract).getContractType(_exchange);
 
-        combine_proxy proxy = new combine_proxy(_contract, beaconContract, msg.sender);
+        address proxy = deploy(_pid);
+        combine_proxy(payable(proxy)).initialize(_contract, beaconContract, msg.sender);
+
         emit NewProxy(address(proxy), msg.sender);
 
         proxyContracts[msg.sender].push(address(proxy));
@@ -107,5 +116,47 @@ contract proxyFactory is Ownable {
 
         return address(proxy);
     }
+
+
+    function getBytecode_old(string memory _exchange, address _bc,address _owner) private pure returns (bytes memory) {
+        bytes memory parameters = abi.encode(_exchange, _bc, _owner);
+        bytes memory bytecode = type(combine_proxy).creationCode;
+        bytes memory result = abi.encodePacked(bytecode, parameters);
+        return result;
+    }
+    function getBytecode() private pure returns (bytes memory) {
+        bytes memory result = abi.encodePacked(type(combine_proxy).creationCode);
+        return result;
+    }
+
+    function getAddress(uint _pid) public view returns (address)
+    {
+        bytes32 newsalt = keccak256(abi.encodePacked(_pid,msg.sender));
+
+        bytes memory bytecode = getBytecode();
+        bytes32 hash = keccak256(
+            abi.encodePacked(bytes1(0xff), address(this), newsalt, keccak256(bytecode))
+        );
+
+        return address(uint160(uint(hash)));
+    }    
+
+    function deploy(uint _pid) public payable returns (address addr){
+        bytes32 newsalt = keccak256(abi.encodePacked(_pid,msg.sender));
+        bytes memory bytecode = getBytecode();
+
+        assembly {
+            addr := create2(
+                0, 
+                add(bytecode, 0x20),
+                mload(bytecode),
+                newsalt
+            )
+
+            if iszero(extcodesize(addr)) {
+                revert(0, 0)
+            }
+        }
+    }    
 }
 //"0x92aF24CDc779715bcf55f3BC4dc4C2d8F7729507","0xD0153B7c79473eA931DaA5FDb25751d7534c4c3B"
