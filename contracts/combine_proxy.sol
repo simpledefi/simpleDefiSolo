@@ -117,13 +117,6 @@ contract proxyFactory is Ownable {
         return address(proxy);
     }
 
-
-    function getBytecode_old(string memory _exchange, address _bc,address _owner) private pure returns (bytes memory) {
-        bytes memory parameters = abi.encode(_exchange, _bc, _owner);
-        bytes memory bytecode = type(combine_proxy).creationCode;
-        bytes memory result = abi.encodePacked(bytecode, parameters);
-        return result;
-    }
     function getBytecode() private pure returns (bytes memory) {
         bytes memory result = abi.encodePacked(type(combine_proxy).creationCode);
         return result;
