@@ -5,6 +5,10 @@ var slotsLib = artifacts.require("slotsLib");
 
 if (config.network == "development") var proxyApp = artifacts.require("combine_proxy");
 
+function amt(val) {
+    return val.toString() + "000000000000000000";
+}
+
 module.exports = async function(deployer, network, accounts) {
     if (config.network == "development") {
         accounts = await web3.eth.getAccounts();
@@ -77,6 +81,11 @@ module.exports = async function(deployer, network, accounts) {
         await beacon.setAddress("HARVESTER","0x0e0435B1aB9B9DCddff2119623e25be63ef5CB6e");
         await beacon.setAddress("ADMINUSER","0x0e0435B1aB9B9DCddff2119623e25be63ef5CB6e");
         await beacon.setAddress("FEECOLLECTOR","0x42a515c1EDB651F4c69c56E05578D2805D6451eB");
+
+        console.log("Setting fee");
+        await beacon.setFee('DEFAULT', 'HARVEST', amt(19), 0);
+        let fee = await beacon.getFee('DEFAULT', 'HARVEST', accounts[0]);
+        console.log(fee);
     }
     
     // let ea = await beacon.getExchangeInfo('PANCAKESWAP');
