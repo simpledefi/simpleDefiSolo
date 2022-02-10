@@ -263,7 +263,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         pendingCake = swap(_slot, pendingCake,path);
         
-        uint finalReward = sendFee('HARVEST',pendingCake, ((lastGas * tx.gasprice)*10e8));
+        uint finalReward = sendFee('HARVEST',pendingCake, ((lastGas * tx.gasprice)*10e8)); // lastGas is here in case 3rd party harvester is used, should normally be 0
         
         if (holdBack > 0) {
             uint holdbackAmount = (finalReward/100) * (holdBack/10**18);
@@ -338,12 +338,18 @@ contract combineApp is Storage, Ownable, AccessControl {
         return (a,b,c,d,e,f);
     }
     function sendFee(string memory _type, uint _total, uint _extra) private returns (uint){
-        uint64 fee = iBeacon(beaconContract).getFee('DEFAULT',_type,owner());
+        uint fee = iBeacon(beaconContract).getFee('DEFAULT',_type,owner());
         uint feeAmount = ((_total * fee)/100e18) + _extra;
         if (feeAmount > _total) feeAmount = _total;
         
         if(feeAmount > 0) {
-            _total = _total - feeAmount;
+            if (feeAmount > _total) {
+                feeAmount = _total;
+                _total = 0;
+            }
+            else {
+                _total = _total - feeAmount;
+            }
             payable(address(feeCollector)).transfer(feeAmount);
             emit sdFeeSent(feeAmount,_total);
         }
