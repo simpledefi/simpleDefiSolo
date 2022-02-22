@@ -54,8 +54,9 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     }
     
     fallback () payable external {
-        require(logic_contract != address(0),"Logic contract required");
-        address target = logic_contract;
+       require(logic_contract != address(0),"Logic contract required");
+       address target = logic_contract;
+        // address target = prBeacon(beaconContract).mExchanges(exchange);
         
         assembly {
             let ptr := mload(0x40)

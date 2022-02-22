@@ -10,7 +10,11 @@ const base_proxy = artifacts.require("combine_proxy");
 const ERC20 = artifacts.require("ERC20");
 
 function amt(val) {
-    return val.toString() + "000000000000000000";
+    // return val.toString() + "000000000000000000";
+    return  parseFloat(val).toFixed(18).replace(".","").toString();
+
+
+
 }
 
 function check_revert(e,fSignature) {
@@ -28,17 +32,19 @@ function errorSig(e,sig,hex="") {
 let app;
 
 contract('combineApp', accounts => {
-    let pool_ID = 252; //BUSD-BNB
+    let pool_ID = 501; //BUSD-BNB
     let exchangeName = "PANCAKESWAP";
-    let new_Pool = 251;
-    let swap_ID = 251;
+    let new_Pool = 496;
+    let swap_ID = 496;
 
     // pool_ID = swap_ID
     it("Fee should be immediately set", async() => {
+        let feeAmt = amt(19);
         const beacon = await combine_beacon.deployed();
-        await beacon.setFee('DEFAULT', 'HARVEST', amt(10), 0);
+        await beacon.setFee('DEFAULT', 'HARVEST', feeAmt, 0);
         let fee = await beacon.getFee('DEFAULT', 'HARVEST', accounts[0]);
-        assert(fee == amt(10), "Fee Not Set");
+        console.log("Fee Set:",feeAmt,fee);
+        assert(fee == feeAmt, "Fee Not Set");
     });
 
     it('should deploy combineApp with initial deposit of 125', async () => {
@@ -48,7 +54,7 @@ contract('combineApp', accounts => {
 
         console.log("Pre:",addr);
 
-        await pF.initialize(pool_ID,exchangeName,{value: amt(125)});
+        await pF.initialize(pool_ID,exchangeName,{value: amt(.0125)});
         let proxyAddr = await pF.getLastProxy(accounts[0]);
         app = await combineApp.at(proxyAddr);
 
@@ -57,7 +63,7 @@ contract('combineApp', accounts => {
     });    
 
     it("Should handle deposit", async() => {
-        await app.deposit(pool_ID, exchangeName,{ value: amt(5) });
+        await app.deposit(pool_ID, exchangeName,{ value: amt(.005) });
         let userinfo = await app.userInfo(new_Pool, exchangeName);
         console.log("AFTER:", JSON.stringify(userinfo));
     });
@@ -130,7 +136,7 @@ contract('combineApp', accounts => {
         await app.updatePool(pool_ID, exchangeName);
         await app.updatePool(pool_ID, exchangeName);
         let pc0 = await app.pendingReward(pool_ID, exchangeName);
-        await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
+        await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
         let pc1 = await app.pendingReward(pool_ID, exchangeName);
         assert(pc1 < pc0 && pc0>0, `Pending cake not cleared out ${pc1} ${pc0}`);
     });
@@ -156,7 +162,7 @@ contract('combineApp', accounts => {
     });
 
     it("Should allow pool swap", async() => {
-        await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
+        await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
         try {
             await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName);
         }
@@ -170,7 +176,7 @@ contract('combineApp', accounts => {
         let userinfo = await app.userInfo(swap_ID, exchangeName);
         let balance0 = userinfo[0];
         console.log("Before Deposit");
-        await app.deposit(swap_ID, exchangeName,{ value: 1 * (10 ** 18) });
+        await app.deposit(swap_ID, exchangeName,{ value: amt(1) });
         console.log("After Deposit");
         userinfo = await app.userInfo(swap_ID, exchangeName);
         assert(userinfo[0] > balance0, "Balance should have increased");
@@ -194,7 +200,7 @@ contract('combineApp', accounts => {
 
     it("Should reject deposit from 3rd party", async() => {
         try {
-            await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18), from: accounts[2] });
+            await app.deposit(pool_ID, exchangeName,{ value: amt(1), from: accounts[2] });
         } catch (e) {
             assert(e.message.includes("caller is not the owner"), "Allows deposit from 3rd party");
         }
@@ -202,7 +208,7 @@ contract('combineApp', accounts => {
 
     it("Should disallow allow 3rd Party to set holdback", async() => {
         try {
-            await app.setHoldBack((1 * (10 ** 18)).toString(), { from: accounts[2] });
+            await app.setHoldBack((amt(1)).toString(), { from: accounts[2] });
         } catch (e) {
             assert(e.message.includes("caller is not the owner"), "Allows setHoldBack from 3rd party");
         }
@@ -298,7 +304,7 @@ contract('combineApp', accounts => {
             await app.updatePool(pool_ID, exchangeName);
             await app.updatePool(pool_ID, exchangeName);
             let pc0 = await app.pendingReward(pool_ID, exchangeName);
-            await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
+            await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
             pc1 = await app.pendingReward(pool_ID, exchangeName);
             assert(pc1 < pc0 && pc0>0, `Pending cake not cleared out ${pc1} ${pc0}`);
         });
@@ -334,7 +340,7 @@ contract('combineApp', accounts => {
         it("Should allow deposit into new pool", async() => {        
             let userinfo = await app.userInfo(pool_ID, exchangeName);
             let balance0 = userinfo[0];
-            await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
+            await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
             userinfo = await app.userInfo(pool_ID, exchangeName);
             assert(userinfo[0] > balance0, "Balance should have increased");
         });
@@ -356,7 +362,7 @@ contract('combineApp', accounts => {
 
         it("Should reject deposit from 3rd party", async() => {
             try {
-                await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18), from: accounts[2] });
+                await app.deposit(pool_ID, exchangeName,{ value: amt(1), from: accounts[2] });
             } catch (e) {
                 assert(e.message.includes("caller is not the owner"), "Allows deposit from 3rd party");
             }
@@ -364,7 +370,7 @@ contract('combineApp', accounts => {
 
         it("Should disallow allow 3rd Party to set holdback", async() => {
             try {
-                await app.setHoldBack((1 * (10 ** 18)).toString(), { from: accounts[2] });
+                await app.setHoldBack((amt(1)).toString(), { from: accounts[2] });
             } catch (e) {
                 assert(e.message.includes("caller is not the owner"), "Allows setHoldBack from 3rd party");
             }
