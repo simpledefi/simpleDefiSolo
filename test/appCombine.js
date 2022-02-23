@@ -54,7 +54,7 @@ contract('combineApp', accounts => {
 
         console.log("Pre:",addr);
 
-        await pF.initialize(pool_ID,exchangeName,{value: amt(.0125)});
+        await pF.initialize(pool_ID,exchangeName,0,{value: amt(.0125)});
         let proxyAddr = await pF.getLastProxy(accounts[0]);
         app = await combineApp.at(proxyAddr);
 

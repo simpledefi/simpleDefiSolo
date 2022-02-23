@@ -25,7 +25,9 @@ module.exports = async function(deployer, network, accounts) {
       'pendingCake(uint256,address)',
       '0x0000000000000000000000000000000000000000',
       'MULTIEXCHANGE',
+      'MULTIEXCHANGEPOOLED',
   );
+  
 
   console.log("Setting Babyswap");
   await beacon.setExchangeInfo('BABYSWAP', // really BABYSWAP
@@ -35,6 +37,7 @@ module.exports = async function(deployer, network, accounts) {
       'pendingCake(uint256,address)', //pendingCall
       '0x55d398326f99059ff775485246999027b3197955', //intermediateToken
       'MULTIEXCHANGE',
+      'MULTIEXCHANGEPOOLED',
   );
 
   console.log("Setting Apeswap");
@@ -45,6 +48,7 @@ module.exports = async function(deployer, network, accounts) {
       'pendingCake(uint256,address)', //pendingCall
       '0x0000000000000000000000000000000000000000', //intermediateToken
       'MULTIEXCHANGE',
+      'MULTIEXCHANGEPOOLED',
   );
 
 

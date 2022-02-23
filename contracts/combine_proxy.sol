@@ -8,7 +8,7 @@ interface iApp {
 interface prBeacon {
     function mExchanges(string memory _exchange) external returns(address);
     function getAddress(string memory _exchange) external returns(address);
-    function getContractType(string memory _name) external returns (string memory _contract);
+    function getContractType(string memory _name, uint _type) external returns (string memory _contract);
 }
 
 contract combine_proxy is Storage, Ownable, AccessControl  {
@@ -100,11 +100,11 @@ contract proxyFactory is Ownable {
         return proxyContracts[_user][proxyContracts[_user].length - 1];
     }
     
-    function initialize(uint64  _pid, string memory _exchange) public payable returns (address) {        
+    function initialize(uint64  _pid, string memory _exchange,uint _poolType) public payable returns (address) {        
         require(_pid != 0, "Pool ID required");
         require(beaconContract != address(0), "Beacon Contract required");
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
-        string memory _contract = prBeacon(beaconContract).getContractType(_exchange);
+        string memory _contract = prBeacon(beaconContract).getContractType(_exchange,_poolType);
 
         address proxy = deploy(_pid);
         combine_proxy(payable(proxy)).initialize(_contract, beaconContract, msg.sender);

@@ -27,7 +27,8 @@ contract combine_beacon is Ownable {
         address rewardToken;
         address intermediateToken;
         string pendingCall;
-        string contractType;
+        string contractType_solo;
+        string contractType_pooled;
     }
 
     mapping (string => mapping(string => sFee)) public mFee;
@@ -127,34 +128,37 @@ contract combine_beacon is Ownable {
         emit exchangeSet(_exchange, _replacement_logic_contract, _start);
     }
     
-    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall,address _intermediateToken, string memory _contractType) public onlyOwner {
+    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall,address _intermediateToken, string memory _contractType_solo, string memory _contractType_pooled) public onlyOwner {
         require(bytes(_name).length > 0, "Name cannot be empty");
         require(_chefContract != address(0), "Chef contract cannot be empty");
         require(_routerContract != address(0), "Route contract cannot be empty");
         require(_rewardToken != address(0), "Reward token cannot be empty");
         require(bytes(_pendingCall).length > 0, "Pending call cannot be empty");
-        require(bytes(_contractType).length > 0, "Contract type cannot be empty");
+        require(bytes(_contractType_solo).length > 0, "Contract type cannot be empty");
+        require(bytes(_contractType_pooled).length > 0, "Contract type cannot be empty");
 
         mExchangeInfo[_name].chefContract = _chefContract;
         mExchangeInfo[_name].routerContract = _routerContract;
         mExchangeInfo[_name].rewardToken = _rewardToken;
         mExchangeInfo[_name].pendingCall = _pendingCall;
         mExchangeInfo[_name].intermediateToken = _intermediateToken;
-        mExchangeInfo[_name].contractType = _contractType;
+        mExchangeInfo[_name].contractType_solo = _contractType_solo;
+        mExchangeInfo[_name].contractType_pooled = _contractType_pooled;
     }
     
-    function getExchangeInfo(string memory _name) public view returns(address _chefContract, address _routerContract, address _rewardToken,string memory _pendingCall,address _intermediateToken, string memory _contractType)  {
-        _chefContract = mExchangeInfo[_name].chefContract;
-        _routerContract = mExchangeInfo[_name].routerContract;
-        _rewardToken = mExchangeInfo[_name].rewardToken;
-        _pendingCall = mExchangeInfo[_name].pendingCall;
-        _intermediateToken = mExchangeInfo[_name].intermediateToken;
-        _contractType = mExchangeInfo[_name].contractType;
-
+    function getExchangeInfo(string memory _name) public view returns(address _chefContract, address _routerContract, address _rewardToken,string memory _pendingCall,address _intermediateToken, string memory _contractType_solo, string memory _contractType_pooled)  {
+        return ( mExchangeInfo[_name].chefContract, 
+            mExchangeInfo[_name].routerContract, 
+            mExchangeInfo[_name].rewardToken, 
+            mExchangeInfo[_name].pendingCall, 
+            mExchangeInfo[_name].intermediateToken, 
+            mExchangeInfo[_name].contractType_solo, 
+            mExchangeInfo[_name].contractType_pooled
+        );
     }
 
-    function getContractType(string memory _name) public view returns (string memory _contract) {
-        _contract = mExchangeInfo[_name].contractType;
+    function getContractType(string memory _name, uint _type) public view returns (string memory _contract) {                
+        _contract = _type== 0?mExchangeInfo[_name].contractType_solo:mExchangeInfo[_name].contractType_pooled;
     }
 
     function setAddress(string memory _key, address _value) public onlyOwner {

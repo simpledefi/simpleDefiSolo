@@ -50,7 +50,7 @@ library slotsLib {
     }
 
     function updateSlot(uint64 _slotId, uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
-        (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+        (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         (address _lpContract,uint _alloc,,) = iMasterChef(_chefContract).poolInfo(_poolId);
 
         if (_lpContract == address(0)) revert RequiredParameter("_lpContract");
@@ -101,7 +101,7 @@ library slotsLib {
     function getSlot(uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal view returns (sSlots memory) {
         uint64 _slotId = find_slot(_poolId,_exchangeName,slots);
         if (_slotId == MAX_SLOTS+1) return (sSlots(_slotId,"",address(0),address(0),address(0),address(0),address(0),address(0),"",address(0)));
-        (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(slots[_slotId].exchangeName);
+        (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,,) = iBeacon(beaconContract).getExchangeInfo(slots[_slotId].exchangeName);
         return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
     }    
 
@@ -111,7 +111,7 @@ library slotsLib {
             return updateSlot(uint64(slotsLib.MAX_SLOTS+1), _poolId, _exchangeName, slots, beaconContract);
         }
         else {
-            (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+            (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
             return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
         }
     }    
