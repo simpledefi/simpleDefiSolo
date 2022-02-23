@@ -89,9 +89,8 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint _bal = address(this).balance;
         if (_bal==0) revert sdInsufficentBalance();
         
-        slotsLib.swapSlot(_fromPoolId, _fromExchangeName,_toPoolId, _toExchangeName,slots, beaconContract);
+        _slot = slotsLib.swapSlot(_fromPoolId, _fromExchangeName,_toPoolId, _toExchangeName,slots, beaconContract);
         addFunds(_slot,_bal);
-        
         emit sdNewPool(_fromPoolId,_toPoolId);
     }
     
@@ -157,7 +156,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         ERC20(token).transfer(owner(),_bal);
     }
 
-    function addFunds(slotsLib.sSlots memory _slot, uint inValue) private {
+    function addFunds(slotsLib.sSlots memory _slot, uint inValue) private  {
         if (inValue==0) revert sdInsufficentBalance();
 
         uint amount0;
@@ -329,7 +328,8 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     function userInfo(uint64  _poolId, string memory _exchangeName) public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
-        if (_slot.poolId == slotsLib.MAX_SLOTS+1)  return (0,0,0,0,0,0);
+
+        if (_slot.lpContract == address(0))  return (0,0,0,0,0,0);
         
         (uint a, uint b) = iMasterChef(_slot.chefContract).userInfo(_slot.poolId,address(this));
         (uint c, uint d) = tokenBalance(_slot);

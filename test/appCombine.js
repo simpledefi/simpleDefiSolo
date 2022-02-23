@@ -28,10 +28,10 @@ function errorSig(e,sig,hex="") {
 let app;
 
 contract('combineApp', accounts => {
-    let pool_ID = 252; //BUSD-BNB
+    let pool_ID = 501; //BUSD-BNB
     let exchangeName = "PANCAKESWAP";
-    let new_Pool = 251;
-    let swap_ID = 251;
+    let new_Pool = 496;
+    let swap_ID = 496;
 
     // pool_ID = swap_ID
     it("Fee should be immediately set", async() => {
@@ -52,8 +52,10 @@ contract('combineApp', accounts => {
         let proxyAddr = await pF.getLastProxy(accounts[0]);
         app = await combineApp.at(proxyAddr);
 
-        console.log("lastProxy: ", proxyAddr);
+        console.log("LP :", proxyAddr);
         console.log("Done deploy")
+        let userinfo = await app.userInfo(pool_ID, exchangeName);
+        console.log("Init ID:", JSON.stringify(userinfo));
     });    
 
     it("Should handle deposit", async() => {
@@ -158,7 +160,11 @@ contract('combineApp', accounts => {
     it("Should allow pool swap", async() => {
         await app.deposit(pool_ID, exchangeName,{ value: 1 * (10 ** 18) });
         try {
+            let userinfo = await app.userInfo(pool_ID, exchangeName);
+            console.log("POOL ID:", JSON.stringify(userinfo));
             await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName);
+            userinfo = await debug(app.userInfo(swap_ID, exchangeName));
+            console.log("SWAP ID:", JSON.stringify(userinfo));
         }
         catch (e) {
             console.log(e);
