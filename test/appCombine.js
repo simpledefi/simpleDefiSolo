@@ -58,8 +58,10 @@ contract('combineApp', accounts => {
         let proxyAddr = await pF.getLastProxy(accounts[0]);
         app = await combineApp.at(proxyAddr);
 
-        console.log("lastProxy: ", proxyAddr);
+        console.log("LP :", proxyAddr);
         console.log("Done deploy")
+        let userinfo = await app.userInfo(pool_ID, exchangeName);
+        console.log("Init ID:", JSON.stringify(userinfo));
     });    
 
     it("Should handle deposit", async() => {
@@ -164,7 +166,11 @@ contract('combineApp', accounts => {
     it("Should allow pool swap", async() => {
         await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
         try {
+            let userinfo = await app.userInfo(pool_ID, exchangeName);
+            console.log("POOL ID:", JSON.stringify(userinfo));
             await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName);
+            userinfo = await debug(app.userInfo(swap_ID, exchangeName));
+            console.log("SWAP ID:", JSON.stringify(userinfo));
         }
         catch (e) {
             console.log(e);
