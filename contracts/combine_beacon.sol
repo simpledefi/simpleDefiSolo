@@ -121,7 +121,7 @@ contract combine_beacon is Ownable {
         
         mExchanges[_exchange].start = _start;
         mExchanges[_exchange].replacement_logic_contract = _replacement_logic_contract;
-        if (mExchanges[_exchange].current_logic_contract == address(0)) {
+        if (mExchanges[_exchange].current_logic_contract == address(0) || _start <= block.timestamp) {
             mExchanges[_exchange].current_logic_contract = _replacement_logic_contract;
         }
         emit exchangeSet(_exchange, _replacement_logic_contract, _start);
