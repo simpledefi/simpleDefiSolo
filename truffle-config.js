@@ -84,6 +84,13 @@ module.exports = {
   // Set default mocha options here, use special reporters etc.
   mocha: {
     // timeout: 100000
+    reporter: 'eth-gas-reporter',
+    reporterOptions: {
+      token: "BNB",
+      gasPriceApi: "https://api.bscscan.com/api?module=proxy&action=eth_gasPrice",
+      excludeContracts: ['Migrations']
+    }
+
   },
 
   // Configure your compilers
@@ -93,7 +100,7 @@ module.exports = {
       // docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
        settings: {          // See the solidity docs for advice about optimization and evmVersion
         optimizer: {
-          enabled: true,
+          enabled: false,
           runs: 200
         },
       //  evmVersion: "byzantium"

@@ -21,5 +21,8 @@
     "truffle-hdwallet-provider": "^1.0.17",
     "truffle-privatekey-provider": "^1.5.0",
     "web3": "^1.6.1"
+  },
+  "devDependencies": {
+    "eth-gas-reporter": "^0.2.24"
   }
 }
