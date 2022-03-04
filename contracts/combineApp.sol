@@ -101,7 +101,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
     function pendingReward(slotsLib.sSlots memory _slot) private view returns (uint) {
         (, bytes memory data) = _slot.chefContract.staticcall(abi.encodeWithSignature(_slot.pendingCall, _slot.poolId,address(this)));
-        uint pendingReward_val = abi.decode(data,(uint256));
+        uint pendingReward_val = data.length==0?0:abi.decode(data,(uint256));
         if (pendingReward_val == 0) {
             pendingReward_val += ERC20(_slot.rewardToken).balanceOf(address(this));
         }
