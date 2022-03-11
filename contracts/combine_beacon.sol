@@ -21,6 +21,12 @@ contract combine_beacon is Ownable {
         uint expires;
     }
 
+    struct aDiscount {
+        address _user;
+        uint _discount;
+        uint _expires;
+    }
+
     struct sExchangeInfo {
         address chefContract;
         address routerContract;
@@ -67,6 +73,12 @@ contract combine_beacon is Ownable {
         return (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
     }
 
+    function setDiscount(aDiscount[] memory  _discount) public onlyOwner{ 
+        for (uint i = 0; i < _discount.length; i++) {
+            setDiscount(_discount[i]._user, _discount[i]._discount, _discount[i]._expires);
+        }
+    }
+    
     function setDiscount(address _user, uint _amount, uint _expires) public onlyOwner {
         require(_amount <= 100 ether,"Cannot exceed 100%");
         mDiscounts[_user].discount_amount = _amount;
