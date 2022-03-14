@@ -30,7 +30,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Restricted Function");
         _;
     }
-
+    ///@notice Initialize the proxy contract
+    ///@param _poolId the id of the pool
+    ///@param _beacon the address of the beacon contract
+    ///@param _exchangeName name of the exchange to lookup on beacon
+    ///@param _owner the address of the owner
     function initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) public onlyOwner payable {
         if (_initialized == true) revert sdInitializedError();
         _initialized = true;
@@ -48,13 +52,21 @@ contract combineApp is Storage, Ownable, AccessControl {
         transferOwnership(_owner);
     }
 
+    ///@notice Add harvester permission to contract
+    ///@param _address address of user to add as harvester
     function addHarvester(address _address) public onlyOwner {
         _setupRole(HARVESTER,_address);
     }
 
+    ///@notice Remove user as harvester
+    ///@param _address address of user to remove as harvester
     function removeHarvester(address _address) public onlyOwner{
         revokeRole(HARVESTER,_address);
     }
+
+    ///@notice create slot for new pool
+    ///@param _poolId id of new pool
+    ///@param _exchangeName name of exchange to lookup on beacon
     function setup(uint64 _poolId, string memory _exchangeName) private  {
         slotsLib.sSlots memory _slot = slotsLib.updateSlot(uint64(slotsLib.MAX_SLOTS+1),_poolId,_exchangeName, slots, beaconContract);
 
@@ -65,8 +77,13 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit sdInitialized(_poolId,_slot.lpContract);
     }
     
+    ///@notice default receive function
     receive() external payable {}
 
+
+    //@notice Add funds to specified pool and exhange
+    ///@param _poolId id of pool to add funds to
+    ///@param _exchangeName name of exchange to lookup on beacon
     function deposit(uint64 _poolId, string memory _exchangeName) external onlyOwner payable  {
         slotsLib.sSlots memory _slot = slotsLib.getDepositSlot(_poolId, _exchangeName,slots, beaconContract);
         uint deposit_amount = msg.value;
@@ -78,6 +95,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit sdDeposit(deposit_amount);
     }
 
+    ///@notice Swap funds from one pool/exchnage to another pool/exchange
+    ///@param _fromPoolId id of pool to swap from
+    ///@param _fromExchangeName name of exchange to lookup in slots
+    ///@param _toPoolId id of pool to swap to
+    ///@param _toExchangeName name of exchange to lookup in slots
     function swapPool(uint64 _fromPoolId, string memory _fromExchangeName, uint64 _toPoolId, string memory _toExchangeName) public allowAdmin {
         slotsLib.sSlots memory _slot = getSlot(_fromPoolId, _fromExchangeName);
         
@@ -94,11 +116,18 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit sdNewPool(_fromPoolId,_toPoolId);
     }
     
+    ///@notice get pending rewards on a specific pool/exchange
+    ///@param _poolId id of pool to get pending rewards on
+    ///@param _exchangeName name of exchange to lookup in slots
+    ///@return pending rewards 
     function pendingReward(uint64 _poolId, string memory _exchangeName) public view returns (uint) {        
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
         return pendingReward(_slot);
     }
 
+    ///@notice get pending rewards on a specific slot id
+    ///@param _slot slot to get pending rewards on
+    ///@return pending rewards 
     function pendingReward(slotsLib.sSlots memory _slot) private view returns (uint) {
         (, bytes memory data) = _slot.chefContract.staticcall(abi.encodeWithSignature(_slot.pendingCall, _slot.poolId,address(this)));
         uint pendingReward_val = data.length==0?0:abi.decode(data,(uint256));
@@ -107,7 +136,10 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
         return pendingReward_val;
     }
-    
+
+    ///@notice liquidate funds on a specific pool/exchange
+    ///@param _poolId id of pool to liquidate
+    ///@param _exchangeName name of exchange to lookup in slots    
     function liquidate(uint64 _poolId, string memory _exchangeName) public onlyOwner lockFunction {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
         do_harvest(_slot, 0);
@@ -122,11 +154,14 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit sdUintLog("Liquidate Total",_total);
     }
     
+    ///@notice set holdback on rewards to be sent back to user
+    ///@param _holdback amount of rewards to hold back
     function setHoldBack(uint64 _holdback) public onlyOwner {
         holdBack = _holdback;
         emit sdUintLog("holdback",_holdback);
     }
     
+    ///@notice send holdback funds to user (BNB Balance)
     function sendHoldBack() public onlyOwner lockFunction{
         uint bal = address(this).balance;
         if (bal == 0) revert sdInsufficentBalance();
@@ -134,6 +169,9 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit sdHoldBack(bal,bal);
     }
     
+    ///@notice Manually perform a harvest on a specific pool/exchange
+    ///@param _poolId id of pool to harvest on
+    ///@param _exchangeName name of exchange to lookup in slots
     function harvest(uint64  _poolId, string memory _exchangeName) public lockFunction allowAdmin {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
         uint64 _offset = iBeacon(beaconContract).getConst('DEFAULT','HARVESTSOLOGAS');
@@ -146,16 +184,25 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
     }
     
+    ///@notice helper function to return balance of 2 tokens in a pool
+    ///@param _slot slot to get balance of
+    ///@return _bal0 of tokens of token0 from pool
+    ///@return _bal1 of tokens of token1 from pool
     function tokenBalance(slotsLib.sSlots memory _slot) private view returns (uint _bal0,uint _bal1) {
         _bal0 = ERC20(_slot.token0).balanceOf(address(this));
         _bal1 = ERC20(_slot.token1).balanceOf(address(this));
     }    
     
+    ///@notice helper function to return balance of specified token from contract to the user
+    ///@param token address of token to recover
     function rescueToken(address token) public onlyOwner{
         uint _bal = ERC20(token).balanceOf(address(this));
         ERC20(token).transfer(owner(),_bal);
     }
 
+    ///@notice Internal funciton to add funds to a specified slot
+    ///@param _slot slot to add funds to
+    ///@param inValue amount of funds to add
     function addFunds(slotsLib.sSlots memory _slot, uint inValue) private  {
         if (inValue==0) revert sdInsufficentBalance();
 
@@ -185,6 +232,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         addLiquidity(_slot,amount0,amount1);
     }
 
+    ///@notice Internal function to add liquidity to a pool
+    ///@dev amount0 and amount1 should be the same value (converted to/from BNB)
+    ///@param _slot slot to add liquidity to
+    ///@param amount0 amount of liquidity to add of token0
+    ///@param amount1 amount of liquidity to add of token1
     function addLiquidity(slotsLib.sSlots memory _slot, uint amount0, uint amount1) private {
         uint amountA;
         uint amountB;
@@ -204,6 +256,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit sdLiquidityProvided(amountA, amountB, liquidity);
     }
     
+    ///@notice Internal function to swap 2 tokens
+    ///@param _slot slot to swap tokens on
+    ///@param amountIn amount of tokens to swap
+    ///@param path address of tokens to swap
+    ///@return amountOut amount of tokens swapped
     function swap(slotsLib.sSlots memory _slot, uint amountIn, address[] memory path) private returns (uint){
         if (amountIn == 0) revert sdInsufficentBalance();
         uint pathLength = (_slot.intermediateToken != address(0) && path[0] != _slot.intermediateToken && path[1] != _slot.intermediateToken) ? 3 : 2;
@@ -241,6 +298,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
     }
     
+
+    ///@notice Internal function to harvest spool
+    ///@param _slot slot to harvest
+    ///@param revert_trans (0 - return 0 on failure, 1 - revert on failure)
+    ///@return finalReward  Final amount of reward returned.
     function do_harvest(slotsLib.sSlots memory _slot,uint revert_trans) private returns (uint) {
         uint pendingCake = 0;
         pendingCake = pendingReward(_slot);
@@ -274,6 +336,8 @@ contract combineApp is Storage, Ownable, AccessControl {
         return finalReward;
     }
     
+    ///@notice Internal function to remove liquididty from pool
+    ///@param _slot slot to remove liquidity from
     function removeLiquidity(slotsLib.sSlots memory _slot) private {
         uint amountTokenA;
         uint amountTokenB;
@@ -291,6 +355,8 @@ contract combineApp is Storage, Ownable, AccessControl {
             (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidity(_slot.token0,_slot.token1,_removed,0,0,address(this), deadline);
     }
 
+    ///@notice Internal function to convert token0/token1 to BNB/Base Token
+    ///@param _slot slot to convert
     function revertBalance(slotsLib.sSlots memory _slot) private {
         address[] memory path = new address[](2);
         path[1] = WBNB_ADDR;
@@ -315,17 +381,33 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
     }
     
+    ///@notice Helper function for front end
+    ///@param _poolId pool to get info from
+    ///@param _exchangeName name of exchange to lookup in slots
     function cakePerBlock(uint64  _poolId, string memory _exchangeName) public view returns(uint) {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
         return iMasterChef(_slot.chefContract).cakePerBlock();
     }    
     
+    ///@notice Helper function to force a pool to be updated
+    ///@dev for testing purrposes
+    ///@param _poolId pool to get info from
+    ///@param _exchangeName name of exchange to lookup in slots
     function updatePool(uint64  _poolId, string memory _exchangeName) public {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
 
         iMasterChef(_slot.chefContract).updatePool(_slot.poolId);
     }
-    
+
+    ///@notice returns status of pool on specific pool/exchange
+    ///@param _poolId pool to get info from
+    ///@param _exchangeName name of exchange to lookup in slots
+    ///@return masterchef balance 0
+    ///@return masterchef balance 1
+    ///@return token0 balance
+    ///@return token1 balance
+    ///@return contract balance of rewward token
+    ///@return total of BNB
     function userInfo(uint64  _poolId, string memory _exchangeName) public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
 
@@ -337,9 +419,14 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint f = address(this).balance;
         return (a,b,c,d,e,f);
     }
+
+    ///@notice Internal function to handle fees for specific type
+    ///@param _type type of fee
+    ///@param _total amount of fee
+    ///@param  _extra fee to add (such as gas fee)
+    ///@return _total amount of fee sent
     function sendFee(string memory _type, uint _total, uint _extra) private returns (uint){
         (uint feeAmt,) = iBeacon(beaconContract).getFee('DEFAULT',_type,owner());
-        // uint feeAmt = 19 * 1e18;
         uint feeAmount = ((_total * feeAmt)/100e18) + _extra;
         if (feeAmount > _total) feeAmount = _total;
         
@@ -357,6 +444,10 @@ contract combineApp is Storage, Ownable, AccessControl {
         return _total;
     }
 
+    ///@notice Public function to get slot for pool/exchange
+    ///@param _poolId pool to get info from
+    ///@param _exchangeName name of exchange to lookup in slots
+    ///@return slot info
     function getSlot(uint64 _poolId, string memory _exchangeName) public view returns (slotsLib.sSlots memory) {
         return slotsLib.getSlot(_poolId, _exchangeName, slots, beaconContract);
     }
