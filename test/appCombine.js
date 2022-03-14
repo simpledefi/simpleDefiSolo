@@ -43,6 +43,7 @@ contract('combineApp', accounts => {
         const beacon = await combine_beacon.deployed();
         await beacon.setFee('DEFAULT', 'HARVEST', feeAmt, 0);
         let fee = await beacon.getFee('DEFAULT', 'HARVEST', accounts[0]);
+        fee = fee[0].toString();
         console.log("Fee Set:",feeAmt,fee);
         assert(fee == feeAmt, "Fee Not Set");
     });

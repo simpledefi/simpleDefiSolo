@@ -338,7 +338,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         return (a,b,c,d,e,f);
     }
     function sendFee(string memory _type, uint _total, uint _extra) private returns (uint){
-        uint feeAmt = iBeacon(beaconContract).getFee('DEFAULT',_type,owner());
+        (uint feeAmt,) = iBeacon(beaconContract).getFee('DEFAULT',_type,owner());
         // uint feeAmt = 19 * 1e18;
         uint feeAmount = ((_total * feeAmt)/100e18) + _extra;
         if (feeAmount > _total) feeAmount = _total;

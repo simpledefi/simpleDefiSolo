@@ -15,6 +15,9 @@ contract Storage {
     address internal feeCollector;
     address public beaconContract;
     
+    iBeacon.sExchangeInfo exchangeInfo;
+
+
     bool _locked = false;
     bool _initialized = false;
 

@@ -24,6 +24,7 @@ module.exports = async function(deployer, network, accounts) {
       '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', //rewardToken
       'pendingCake(uint256,address)',
       '0x0000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000', //intermediateToken
       'MULTIEXCHANGE',
       'MULTIEXCHANGEPOOLED',
   );
@@ -36,6 +37,7 @@ module.exports = async function(deployer, network, accounts) {
       '0x603c7f932ED1fc6575303D8Fb018fDCBb0f39a95', //rewardToken
       'pendingCake(uint256,address)', //pendingCall
       '0x55d398326f99059ff775485246999027b3197955', //intermediateToken
+      '0x0000000000000000000000000000000000000000', //intermediateToken
       'MULTIEXCHANGE',
       'MULTIEXCHANGEPOOLED',
   );
@@ -46,6 +48,7 @@ module.exports = async function(deployer, network, accounts) {
       '0xcF0feBd3f17CEf5b47b0cD257aCf6025c5BFf3b7', //routerContract
       '0x603c7f932ED1fc6575303D8Fb018fDCBb0f39a95', //rewardToken
       'pendingCake(uint256,address)', //pendingCall
+      '0x0000000000000000000000000000000000000000', //intermediateToken
       '0x0000000000000000000000000000000000000000', //intermediateToken
       'MULTIEXCHANGE',
       'MULTIEXCHANGEPOOLED',

@@ -50,8 +50,8 @@ library slotsLib {
     }
 
     function updateSlot(uint64 _slotId, uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
-        (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
-        (address _lpContract,uint _alloc,,) = iMasterChef(_chefContract).poolInfo(_poolId);
+        iBeacon.sExchangeInfo memory exchangeInfo = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+        (address _lpContract,uint _alloc,,) = iMasterChef(exchangeInfo.chefContract).poolInfo(_poolId);
 
         if (_lpContract == address(0)) revert RequiredParameter("_lpContract");
         if (_alloc == 0) revert InactivePool(_poolId);
@@ -65,19 +65,19 @@ library slotsLib {
         }     
 
         
-        if (ERC20(_rewardToken).allowance(address(this), _routerContract) == 0) {
-            ERC20(_rewardToken).approve(address(this),MAX_INT);
-            ERC20(_rewardToken).approve(_routerContract,MAX_INT);
+        if (ERC20(exchangeInfo.rewardToken).allowance(address(this), exchangeInfo.routerContract) == 0) {
+            ERC20(exchangeInfo.rewardToken).approve(address(this),MAX_INT);
+            ERC20(exchangeInfo.rewardToken).approve(exchangeInfo.routerContract,MAX_INT);
         }
 
-        ERC20(slots[_slotId].token0).approve(_routerContract,MAX_INT);
-        ERC20(slots[_slotId].token1).approve(_routerContract,MAX_INT);
+        ERC20(slots[_slotId].token0).approve(exchangeInfo.routerContract,MAX_INT);
+        ERC20(slots[_slotId].token1).approve(exchangeInfo.routerContract,MAX_INT);
         iLPToken(_lpContract).approve(address(this),MAX_INT);
-        iLPToken(_lpContract).approve(_chefContract,MAX_INT);        
-        iLPToken(_lpContract).approve(_routerContract,MAX_INT);                            
+        iLPToken(_lpContract).approve(exchangeInfo.chefContract,MAX_INT);        
+        iLPToken(_lpContract).approve(exchangeInfo.routerContract,MAX_INT);                            
 
         emit SlotsUpdated();
-        return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+        return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,exchangeInfo.chefContract,exchangeInfo.routerContract,exchangeInfo.rewardToken,exchangeInfo.pendingCall,exchangeInfo.intermediateToken);
     }
 
     function removeSlot(uint _poolId, string memory _exchangeName, slotStorage[] storage slots) internal returns (uint) {
@@ -101,8 +101,9 @@ library slotsLib {
     function getSlot(uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal view returns (sSlots memory) {
         uint64 _slotId = find_slot(_poolId,_exchangeName,slots);
         if (_slotId == MAX_SLOTS+1) return (sSlots(_slotId,"",address(0),address(0),address(0),address(0),address(0),address(0),"",address(0)));
-        (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,,) = iBeacon(beaconContract).getExchangeInfo(slots[_slotId].exchangeName);
-        return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+        iBeacon.sExchangeInfo memory exchangeInfo = iBeacon(beaconContract).getExchangeInfo(slots[_slotId].exchangeName);
+
+        return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,exchangeInfo.chefContract,exchangeInfo.routerContract,exchangeInfo.rewardToken,exchangeInfo.pendingCall,exchangeInfo.intermediateToken);
     }    
 
     function getDepositSlot(uint64 _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
@@ -111,8 +112,8 @@ library slotsLib {
             return updateSlot(uint64(slotsLib.MAX_SLOTS+1), _poolId, _exchangeName, slots, beaconContract);
         }
         else {
-            (address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall, address _intermediateToken,,) = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
-            return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,_chefContract,_routerContract,_rewardToken,_pendingCall,_intermediateToken);
+            iBeacon.sExchangeInfo memory exchangeInfo = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+            return sSlots(uint64(slots[_slotId].poolId),slots[_slotId].exchangeName,slots[_slotId].lpContract, slots[_slotId].token0,slots[_slotId].token1,exchangeInfo .chefContract,exchangeInfo.routerContract,exchangeInfo.rewardToken,exchangeInfo.pendingCall,exchangeInfo.intermediateToken);
         }
     }    
 }

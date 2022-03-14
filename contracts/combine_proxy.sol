@@ -23,16 +23,21 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
 
     constructor () {}
 
-    function initialize (string memory _exchange, address beacon, address _owner) public {
+
+    ///@notice Initialize the proxy contract
+    ///@param _exchange the name of the exchange
+    ///@param _beacon the address of the beacon contract
+    ///@param _owner the address of the owner
+    function initialize (string memory _exchange, address _beacon, address _owner) public payable  {
         if (_initialized == true) revert sdInitializedError();
 
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
-        require(beacon != address(0), "Beacon Contract required");
+        require(_beacon != address(0), "Beacon Contract required");
         require(_owner != address(0), "Owner is required");
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
         
-        beaconContract = beacon;
+        beaconContract = _beacon;
         setExchange(_exchange);
 
         address _admin = prBeacon(beaconContract).getAddress("ADMINUSER");        
@@ -40,6 +45,10 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         _setupRole(HARVESTER, _admin);
     }
     
+    ///@notice Sets the logic contract for the exchange
+    ///@dev Call function if logic contract gets updated
+    ///@param _exchange the name of the exchange
+    ///@return success - success or failure
     function setExchange(string memory _exchange) public allowAdmin returns (bool success){
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
@@ -49,14 +58,15 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         return true;
     }
 
+    ///@notice Gets the logic contract for the exchange
     function getLogicContract() public view returns (address) {
        return logic_contract;
     }
     
+    ///@notice logic for the proxy part of the contract, uses delegatecall to send function call to the logic contract
     fallback () payable external {
        require(logic_contract != address(0),"Logic contract required");
        address target = logic_contract;
-        // address target = prBeacon(beaconContract).mExchanges(exchange);
         
         assembly {
             let ptr := mload(0x40)
@@ -79,15 +89,24 @@ contract proxyFactory is Ownable {
 
     event NewProxy(address proxy, address user);
 
+
+    ///@notice Initialize the proxy factory contract
+    ///@param _beacon the address of the beacon contract
     constructor (address _beacon) {
         require(_beacon != address(0), "Beacon Contract required");
         beaconContract = _beacon;
     }
 
+    ///@notice Sets the address of the beacon contract
+    ///@dev call when beacon contract gets updated
+    ///@param _beaconContract the address of the beacon contract
     function setBeacon(address _beaconContract) public onlyOwner {
         beaconContract = _beaconContract;
     }
 
+    ///@notice Allows admin to add an existing proxy contract to the list of proxy contracts for a user
+    ///@param _proxyContract the address of the proxy contract
+    ///@param _user the address of the user
     function addProxy(address _proxyContract, address _user) public onlyOwner {
         require(_proxyContract != address(0), "Proxy Contract required");
         require(_user != address(0), "User required");
@@ -95,13 +114,22 @@ contract proxyFactory is Ownable {
         proxyContractsUsers.push(_user);
     }
 
+    ///@notice Returns the last proxy contract created (or added) for a specific user
+    ///@param _user the address of the user
+    ///@return the address of the proxy contract
     function getLastProxy(address _user) public view returns (address) {
         require(_user != address(0), "User required");
         return proxyContracts[_user][proxyContracts[_user].length - 1];
     }
     
-    function initialize(uint64  _pid, string memory _exchange,uint _poolType) public payable returns (address) {        
-        require(_pid != 0, "Pool ID required");
+    ///@notice Creates a new proxy contract for a specific exchange and pool. 
+    ///@dev Proxy contract is owned by calling user
+    ///@dev for Solo contracts, only one proxy contract is needed unless custom logic contract is needed
+    ///@param _pid the pool id
+    ///@param _exchange the name of the exchange
+    ///@param _poolType the type of the pool (0=solo, 1=pool)
+    ///@return the address of the proxy contract
+    function initialize(uint64  _pid, string memory _exchange, uint _poolType) public payable returns (address) {        
         require(beaconContract != address(0), "Beacon Contract required");
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
         string memory _contract = prBeacon(beaconContract).getContractType(_exchange,_poolType);
@@ -118,11 +146,17 @@ contract proxyFactory is Ownable {
         return address(proxy);
     }
 
+    ///@notice Gets bytecode of proxyContract
+    ///@return the bytecode of the proxy contract
     function getBytecode() private pure returns (bytes memory) {
         bytes memory result = abi.encodePacked(type(combine_proxy).creationCode);
         return result;
     }
 
+    ///@notice generates an address of a new proxy contract
+    ///@dev used in front end
+    ///@param _pid the pool id
+    ///@return the address of the proxy contract
     function getAddress(uint _pid) public view returns (address)
     {
         bytes32 newsalt = keccak256(abi.encodePacked(_pid,msg.sender));
@@ -135,6 +169,9 @@ contract proxyFactory is Ownable {
         return address(uint160(uint(hash)));
     }    
 
+    ///@notice deploys bytecode of proxy contract
+    ///@param _pid the pool id
+    ///@return addr the address of the proxy contract
     function deploy(uint _pid) public payable returns (address addr){
         bytes32 newsalt = keccak256(abi.encodePacked(_pid,msg.sender));
         bytes memory bytecode = getBytecode();
@@ -153,4 +190,3 @@ contract proxyFactory is Ownable {
         }
     }    
 }
-//"0x92aF24CDc779715bcf55f3BC4dc4C2d8F7729507","0xD0153B7c79473eA931DaA5FDb25751d7534c4c3B"

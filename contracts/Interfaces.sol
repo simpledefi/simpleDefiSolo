@@ -32,10 +32,20 @@ interface iLPToken{
 }
 
 interface iBeacon {
-    function getFee(string memory _exchange, string memory _type, address _user) external returns(uint);
+    struct sExchangeInfo {
+        address chefContract;
+        address routerContract;
+        address rewardToken;
+        address intermediateToken;
+        address baseToken;
+        string pendingCall;
+        string contractType_solo;
+        string contractType_pooled;
+    }    
+    function getFee(string memory _exchange, string memory _type, address _user) external returns(uint,uint);
     function getConst(string memory _exchange, string memory _type) external returns(uint64);
     function getExchange(string memory _exchange) external view returns(address);
-    function getExchangeInfo(string memory _name) external view returns(address _chefContract, address _routerContract, address _rewardToken, string calldata _pendingCall, address intermediateToken, address contractType_solo, address contractType_pooled);
+    function getExchangeInfo(string memory _name) external view returns(sExchangeInfo memory);
     function getAddress(string memory _key) external view returns(address _value);
 }
 
