@@ -38,7 +38,7 @@ library slotsLib {
     ///@notice Add a new exchange/pool to slot pool
     ///@param _poolId The pool ID
     ///@param _exchangeName Exchange name
-    ///@param _slots current pool of slots
+    ///@param slots current pool of slots
     ///@param beaconContract Address of the beacon contract
     ///@return new position in slot pool    
     function addSlot(uint64 _poolId, string memory _exchangeName, slotStorage[] storage slots,address beaconContract) internal returns (uint64) {
