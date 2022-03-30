@@ -13,6 +13,10 @@ contract combineApp is Storage, Ownable, AccessControl {
     event sdNewPool(uint64 oldPool, uint newPool);
     event sdLiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
     event sdInitialized(uint64 poolId, address lpContract);
+    event sdInitialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner);
+    event sdHarvesterAdd(address _harvester);
+    event sdHarvesterRemove(address _harvester);
+    event sdRescueToken(address _token,uint _amount);
 
     error sdLocked();
     error sdInitializedError();
@@ -50,18 +54,21 @@ contract combineApp is Storage, Ownable, AccessControl {
         
         setup(_poolId, _exchangeName);
         transferOwnership(_owner);
+        emit sdInitializ(_poolId, _beacon,_exchangeName,_owner);
     }
 
     ///@notice Add harvester permission to contract
     ///@param _address address of user to add as harvester
     function addHarvester(address _address) external onlyOwner {
         _setupRole(HARVESTER,_address);
+        emit sdHarveterAdd(_address);
     }
 
     ///@notice Remove user as harvester
     ///@param _address address of user to remove as harvester
     function removeHarvester(address _address) external onlyOwner{
         revokeRole(HARVESTER,_address);
+        emit sdHarvesterRemove(_address);
     }
 
     ///@notice create slot for new pool
@@ -198,6 +205,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     function rescueToken(address token) external onlyOwner{
         uint _bal = ERC20(token).balanceOf(address(this));
         ERC20(token).transfer(owner(),_bal);
+        emit sdRescueToken(token,_bal);
     }
 
     ///@notice Internal funciton to add funds to a specified slot
