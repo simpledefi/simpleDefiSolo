@@ -18,8 +18,8 @@ contract Storage {
     iBeacon.sExchangeInfo exchangeInfo;
 
 
-    bool _locked = false;
-    bool _initialized = false;
+    bool internal _locked = false;
+    bool internal _initialized = false;
 
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
