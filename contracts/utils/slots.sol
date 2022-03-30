@@ -73,6 +73,27 @@ library slotsLib {
     ///@param beaconContract Address of the beacon contract
     ///@return Current slots Pool
     function updateSlot(uint64 _slotId, uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
+        
+        if (keccak256(bytes(slots[_slotId].exchangeName)) != keccak256(bytes(_exchangeName))) {
+            bool _found;
+            for(uint i = 0; i < slots.length; i++) {
+                if (keccak256(bytes(slots[i].exchangeName)) == keccak256(bytes(_exchangeName)) && i != _poolId) {
+                    _found = true;
+                    break;
+                }
+            }
+            if (!_found) {
+                iBeacon.sExchangeInfo memory old_exchangeInfo = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
+                (address _oldLpContract,,,) = iMasterChef(old_exchangeInfo.chefContract).poolInfo(_poolId);
+                ERC20(old_exchangeInfo.rewardToken).approve(old_exchangeInfo.routerContract,0);
+
+                ERC20(slots[_slotId].token0).approve(old_exchangeInfo.routerContract,0);
+                ERC20(slots[_slotId].token1).approve(old_exchangeInfo.routerContract,0);
+                iLPToken(_oldLpContract).approve(old_exchangeInfo.chefContract,0);        
+                iLPToken(_oldLpContract).approve(old_exchangeInfo.routerContract,0);                            
+            }
+        }
+
         iBeacon.sExchangeInfo memory exchangeInfo = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
         (address _lpContract,uint _alloc,,) = iMasterChef(exchangeInfo.chefContract).poolInfo(_poolId);
 
