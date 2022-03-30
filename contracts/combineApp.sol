@@ -13,7 +13,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     event sdNewPool(uint64 oldPool, uint newPool);
     event sdLiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
     event sdInitialized(uint64 poolId, address lpContract);
-    event sdInitialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner);
+    event sdInitialize(uint64 _poolId, address _beacon, string _exchangeName, address _owner);
     event sdHarvesterAdd(address _harvester);
     event sdHarvesterRemove(address _harvester);
     event sdRescueToken(address _token,uint _amount);
@@ -22,6 +22,8 @@ contract combineApp is Storage, Ownable, AccessControl {
     error sdInitializedError();
     error sdInsufficentBalance();
     error sdRequiredParameter(string param);
+    error sdInsufficentFunds();
+
     
     modifier lockFunction() {
         if (_locked == true) revert sdLocked();
@@ -54,14 +56,14 @@ contract combineApp is Storage, Ownable, AccessControl {
         
         setup(_poolId, _exchangeName);
         transferOwnership(_owner);
-        emit sdInitializ(_poolId, _beacon,_exchangeName,_owner);
+        emit sdInitialize(_poolId, _beacon,_exchangeName,_owner);
     }
 
     ///@notice Add harvester permission to contract
     ///@param _address address of user to add as harvester
     function addHarvester(address _address) external onlyOwner {
         _setupRole(HARVESTER,_address);
-        emit sdHarveterAdd(_address);
+        emit sdHarvesterAdd(_address);
     }
 
     ///@notice Remove user as harvester
@@ -298,7 +300,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint[] memory amounts;
 
         uint deadline = block.timestamp + 600;
-        
+
         if (path[0] == WBNB_ADDR && ERC20(WBNB_ADDR).balanceOf(address(this)) >= amountIn) {
             iWBNB(WBNB_ADDR).withdraw(amountIn);
             _cBalance = address(this).balance;
@@ -366,10 +368,12 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint _removed = ERC20(_slot.lpContract).balanceOf(address(this));
         emit sdUintLog("_removed",_removed);
         
-        if (_slot.token1 == WBNB_ADDR)
-            (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidityETH(_slot.token0,_removed,0,0,address(this), deadline);
+        (address token0,address token1) = _slot.token0==WBNB_ADDR?(_slot.token1,_slot.token0):(_slot.token0,_slot.token1);
+
+        if (token1 == WBNB_ADDR)
+            (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidityETH(token0,_removed,0,0,address(this), deadline);
         else
-            (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidity(_slot.token0,_slot.token1,_removed,0,0,address(this), deadline);
+            (amountTokenA, amountTokenB) = iRouter(_slot.routerContract).removeLiquidity(token0,token1,_removed,0,0,address(this), deadline);
     }
 
     ///@notice Internal function to convert token0/token1 to BNB/Base Token
