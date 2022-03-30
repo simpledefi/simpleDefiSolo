@@ -271,6 +271,17 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@return amountOut amount of tokens swapped
     function swap(slotsLib.sSlots memory _slot, uint amountIn, address[] memory path) private returns (uint){
         if (amountIn == 0) revert sdInsufficentBalance();
+
+        uint _cBalance = address(this).balance;
+        if (path[0] == WBNB_ADDR && path[path.length-1] == WBNB_ADDR) {
+            if (ERC20(WBNB_ADDR).balanceOf(address(this)) >= amountIn) {
+                iWBNB(WBNB_ADDR).withdraw(amountIn);
+                _cBalance = address(this).balance;
+            }
+            if (amountIn > _cBalance) revert sdInsufficentFunds();
+            return amountIn;
+        }
+
         uint pathLength = (_slot.intermediateToken != address(0) && path[0] != _slot.intermediateToken && path[1] != _slot.intermediateToken) ? 3 : 2;
         address[] memory swapPath = new address[](pathLength);
         
@@ -287,23 +298,21 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint[] memory amounts;
 
         uint deadline = block.timestamp + 600;
-        uint _bal = path[0] == WBNB_ADDR ? ERC20(WBNB_ADDR).balanceOf(address(this)) : 0;
+        
+        if (path[0] == WBNB_ADDR && ERC20(WBNB_ADDR).balanceOf(address(this)) >= amountIn) {
+            iWBNB(WBNB_ADDR).withdraw(amountIn);
+            _cBalance = address(this).balance;
+        }
 
-        if (_bal > 0) {
-            iWBNB(WBNB_ADDR).withdraw(_bal);
-            return _bal;
+        if (path[path.length - 1] == WBNB_ADDR) {
+            amounts = iRouter(_slot.routerContract).swapExactTokensForETH(amountIn, 0,  swapPath, address(this), deadline);
+        } else if (path[0] == WBNB_ADDR && _cBalance >= amountIn) {
+            amounts = iRouter(_slot.routerContract).swapExactETHForTokens{value: amountIn}(0,swapPath,address(this),deadline);
         }
         else {
-            if (path[path.length - 1] == WBNB_ADDR) {
-                amounts = iRouter(_slot.routerContract).swapExactTokensForETH(amountIn, 0,  swapPath, address(this), deadline);
-            } else if (path[0] == WBNB_ADDR) {
-                amounts = iRouter(_slot.routerContract).swapExactETHForTokens{value: amountIn}(0,swapPath,address(this),deadline);
-            }
-            else {
-                amounts = iRouter(_slot.routerContract).swapExactTokensForTokens(amountIn, 0,swapPath,address(this),deadline);
-            }
-            return amounts[swapPath.length-1];
+            amounts = iRouter(_slot.routerContract).swapExactTokensForTokens(amountIn, 0,swapPath,address(this),deadline);
         }
+        return amounts[swapPath.length-1];
     }
     
 
