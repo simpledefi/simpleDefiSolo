@@ -89,13 +89,11 @@ library slotsLib {
 
         
         if (ERC20(exchangeInfo.rewardToken).allowance(address(this), exchangeInfo.routerContract) == 0) {
-            ERC20(exchangeInfo.rewardToken).approve(address(this),MAX_INT);
             ERC20(exchangeInfo.rewardToken).approve(exchangeInfo.routerContract,MAX_INT);
         }
 
         ERC20(slots[_slotId].token0).approve(exchangeInfo.routerContract,MAX_INT);
         ERC20(slots[_slotId].token1).approve(exchangeInfo.routerContract,MAX_INT);
-        iLPToken(_lpContract).approve(address(this),MAX_INT);
         iLPToken(_lpContract).approve(exchangeInfo.chefContract,MAX_INT);        
         iLPToken(_lpContract).approve(exchangeInfo.routerContract,MAX_INT);                            
 
