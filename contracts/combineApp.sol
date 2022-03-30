@@ -54,13 +54,13 @@ contract combineApp is Storage, Ownable, AccessControl {
 
     ///@notice Add harvester permission to contract
     ///@param _address address of user to add as harvester
-    function addHarvester(address _address) public onlyOwner {
+    function addHarvester(address _address) external onlyOwner {
         _setupRole(HARVESTER,_address);
     }
 
     ///@notice Remove user as harvester
     ///@param _address address of user to remove as harvester
-    function removeHarvester(address _address) public onlyOwner{
+    function removeHarvester(address _address) external onlyOwner{
         revokeRole(HARVESTER,_address);
     }
 
@@ -156,13 +156,13 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     ///@notice set holdback on rewards to be sent back to user
     ///@param _holdback amount of rewards to hold back
-    function setHoldBack(uint64 _holdback) public onlyOwner {
+    function setHoldBack(uint64 _holdback) external onlyOwner {
         holdBack = _holdback;
         emit sdUintLog("holdback",_holdback);
     }
     
     ///@notice send holdback funds to user (BNB Balance)
-    function sendHoldBack() public onlyOwner lockFunction{
+    function sendHoldBack() external onlyOwner lockFunction{
         uint bal = address(this).balance;
         if (bal == 0) revert sdInsufficentBalance();
         payable(owner()).transfer(bal);
@@ -195,7 +195,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     
     ///@notice helper function to return balance of specified token from contract to the user
     ///@param token address of token to recover
-    function rescueToken(address token) public onlyOwner{
+    function rescueToken(address token) external onlyOwner{
         uint _bal = ERC20(token).balanceOf(address(this));
         ERC20(token).transfer(owner(),_bal);
     }
