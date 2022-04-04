@@ -74,7 +74,7 @@ library slotsLib {
     ///@return Current slots Pool
     function updateSlot(uint64 _slotId, uint _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
         
-        if (keccak256(bytes(slots[_slotId].exchangeName)) != keccak256(bytes(_exchangeName))) {
+        if (_slotId != MAX_SLOTS+1 && keccak256(bytes(slots[_slotId].exchangeName)) != keccak256(bytes(_exchangeName))) {
             bool _found;
             for(uint i = 0; i < slots.length; i++) {
                 if (keccak256(bytes(slots[i].exchangeName)) == keccak256(bytes(_exchangeName)) && i != _poolId) {
