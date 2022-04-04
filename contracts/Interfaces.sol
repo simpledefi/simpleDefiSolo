@@ -41,12 +41,16 @@ interface iBeacon {
         string pendingCall;
         string contractType_solo;
         string contractType_pooled;
-    }    
+    }
+
+    function getExchangeInfo(string memory _name) external view returns(sExchangeInfo memory);
     function getFee(string memory _exchange, string memory _type, address _user) external returns(uint,uint);
     function getConst(string memory _exchange, string memory _type) external returns(uint64);
     function getExchange(string memory _exchange) external view returns(address);
-    function getExchangeInfo(string memory _name) external view returns(sExchangeInfo memory);
+    function mExchanges(string memory _exchange) external returns(address);
+    function mDiscounts(address _user) external returns(uint, uint);
     function getAddress(string memory _key) external view returns(address _value);
+
 }
 
 interface iWBNB {
