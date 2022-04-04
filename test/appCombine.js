@@ -32,10 +32,10 @@ function errorSig(e,sig,hex="") {
 let app;
 
 contract('combineApp', accounts => {
-    let pool_ID = 501; //BUSD-BNB
+    let pool_ID = 251; //BUSD-BNB
     let exchangeName = "PANCAKESWAP";
-    let new_Pool = 496;
-    let swap_ID = 496;
+    let new_Pool = 252;
+    let swap_ID = 252;
 
     // pool_ID = swap_ID
     it("Fee should be immediately set", async() => {
@@ -170,7 +170,7 @@ contract('combineApp', accounts => {
             let userinfo = await app.userInfo(pool_ID, exchangeName);
             console.log("POOL ID:", JSON.stringify(userinfo));
             await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName);
-            userinfo = await debug(app.userInfo(swap_ID, exchangeName));
+            userinfo = await app.userInfo(swap_ID, exchangeName);
             console.log("SWAP ID:", JSON.stringify(userinfo));
         }
         catch (e) {
@@ -182,19 +182,22 @@ contract('combineApp', accounts => {
     it("Should allow deposit into new pool", async() => {
         let userinfo = await app.userInfo(swap_ID, exchangeName);
         let balance0 = userinfo[0];
-        console.log("Before Deposit");
+        console.log("Before Deposit:",JSON.stringify(balance0));
         await app.deposit(swap_ID, exchangeName,{ value: amt(1) });
-        console.log("After Deposit");
         userinfo = await app.userInfo(swap_ID, exchangeName);
-        assert(userinfo[0] > balance0, "Balance should have increased");
+        console.log("After Deposit:",JSON.stringify(userinfo[0]));
+        assert(parseInt(userinfo[0],16) > parseInt(balance0,16), "Balance should have increased");
         pool_ID = swap_ID;
     });
 
     it("Should handle handle harvest in new pool", async() => {
         pc0 = await app.pendingReward(pool_ID, exchangeName);
-        await app.updatePool(pool_ID, exchangeName);
+        console.log("PC0", JSON.stringify(pc0));
+        for (i=0; i<10; i++) 
+            await app.updatePool(pool_ID, exchangeName);
         pc1 = await app.pendingReward(pool_ID, exchangeName);
-        assert(pc1 > pc0, "Pending Cake should increase");
+        console.log("Cake:",parseInt(pc1,16), parseInt(pc0,16));
+        assert(parseInt(pc1,16) > parseInt(pc0,16), "Pendings Cake should increase");
 
         fee0 = await web3.eth.getBalance(accounts[2]);
         await app.harvest(pool_ID, exchangeName);
@@ -202,6 +205,7 @@ contract('combineApp', accounts => {
         assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
 
         fee1 = await web3.eth.getBalance(accounts[2]);
+        console.log("FEE:", fee1.toString(), fee0.toString());
         assert(fee1 > fee0, "Fee balance should have increased");
     });
 
