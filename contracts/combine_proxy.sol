@@ -18,6 +18,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     }
 
     error sdInitializedError();
+    error sdFunctionLocked();
 
     receive() external payable {}
 
@@ -28,7 +29,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     ///@param _exchange the name of the exchange
     ///@param _beacon the address of the beacon contract
     ///@param _owner the address of the owner
-    function initialize (string memory _exchange, address _beacon, address _owner) public payable  {
+    function initialize (string memory _exchange, address _beacon, address _owner, uint _poolType) public payable onlyOwner {
         if (_initialized == true) revert sdInitializedError();
 
         bytes memory bExchange = bytes(_exchange);
@@ -36,6 +37,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         require(_beacon != address(0), "Beacon Contract required");
         require(_owner != address(0), "Owner is required");
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
+        _shared = _poolType == 1 ? true  : false;
         
         beaconContract = _beacon;
         setExchange(_exchange);
@@ -43,6 +45,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
         address _admin = prBeacon(beaconContract).getAddress("ADMINUSER");        
         require(_admin != address(0), "Admin address required");
         _setupRole(HARVESTER, _admin);
+        // transferOwnership(_owner);
     }
     
     ///@notice Sets the logic contract for the exchange
@@ -52,8 +55,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     function setExchange(string memory _exchange) public allowAdmin returns (bool success){
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
-        exchange = _exchange;
-        logic_contract = prBeacon(beaconContract).mExchanges(exchange);
+        logic_contract = prBeacon(beaconContract).mExchanges(_exchange);
         require(logic_contract != address(0), "Logic Contract required - setExchange");
         return true;
     }
@@ -65,18 +67,23 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     
     ///@notice logic for the proxy part of the contract, uses delegatecall to send function call to the logic contract
     fallback () payable external {
-       require(logic_contract != address(0),"Logic contract required");
-       address target = logic_contract;
-        
-        assembly {
-            let ptr := mload(0x40)
-            calldatacopy(ptr, 0, calldatasize())
-            let result := delegatecall(gas(), target, ptr, calldatasize(), 0, 0)
-            let size := returndatasize()
-            returndatacopy(ptr, 0, size)
-            switch result
-            case 0 { revert(ptr, size) }
-            case 1 { return(ptr, size) }
+        if(!_shared || msg.sender != owner() || !_initialized){ 
+            require(logic_contract != address(0),"Logic contract required");
+            address target = logic_contract;
+            
+            assembly {
+                let ptr := mload(0x40)
+                calldatacopy(ptr, 0, calldatasize())
+                let result := delegatecall(gas(), target, ptr, calldatasize(), 0, 0)
+                let size := returndatasize()
+                returndatacopy(ptr, 0, size)
+                switch result
+                case 0 { revert(ptr, size) }
+                case 1 { return(ptr, size) }
+            }
+        }
+        else{
+            revert sdFunctionLocked();
         }
     }
 }
@@ -135,12 +142,12 @@ contract proxyFactory is Ownable {
         string memory _contract = prBeacon(beaconContract).getContractType(_exchange,_poolType);
 
         address proxy = deploy(_pid);
-        combine_proxy(payable(proxy)).initialize(_contract, beaconContract, msg.sender);
+        proxyContracts[msg.sender].push(address(proxy));
+        proxyContractsUsers.push(msg.sender);
+        combine_proxy(payable(proxy)).initialize(_contract, beaconContract, msg.sender,_poolType);
 
         emit NewProxy(address(proxy), msg.sender);
 
-        proxyContracts[msg.sender].push(address(proxy));
-        proxyContractsUsers.push(msg.sender);
         iApp(address(proxy)).initialize{value:msg.value}(_pid, beaconContract, _exchange,msg.sender);    
 
         return address(proxy);

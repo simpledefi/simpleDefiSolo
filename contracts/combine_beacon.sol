@@ -95,16 +95,6 @@ contract combine_beacon is Ownable {
         return (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
     }
 
-
-    ///@notice Accept an array of users and discounts from teh admin only
-    ///@param _discount struct array of users and discounts    
-    function setDiscount(aDiscount[] calldata  _discount) public onlyOwner{ 
-        for (uint i = 0; i < _discount.length; i++) {
-            setDiscount(_discount[i]._user, _discount[i]._discount, _discount[i]._expires);
-        }
-        emit sdDiscountsSet(_discount.length);
-    }
-
     ///@notice Accept a user and discount from the admin only
     ///@param _user User address
     ///@param _amount Discount amount
@@ -118,6 +108,15 @@ contract combine_beacon is Ownable {
         mDiscounts[_user].expires = _expires;
         if (mDataUint["LASTDISCOUNT"] != block.timestamp) mDataUint['LASTDISCOUNT'] = block.timestamp;
         emit sdDiscountSet(_user,_amount,_expires);
+    }
+
+    ///@notice Accept an array of users and discounts from teh admin only
+    ///@param _discount struct array of users and discounts    
+    function setDiscountArray(aDiscount[] calldata  _discount) public onlyOwner{ 
+        for (uint i = 0; i < _discount.length; i++) {
+            setDiscount(_discount[i]._user, _discount[i]._discount, _discount[i]._expires);
+        }
+        emit sdDiscountsSet(_discount.length);
     }
 
     ///@notice get discount amount for a user

@@ -8,13 +8,11 @@ const proxyFactory = artifacts.require("proxyFactory");
 
 const base_proxy = artifacts.require("combine_proxy");
 const ERC20 = artifacts.require("ERC20");
+let OWNER_ADDR = "0x0e0435b1ab9b9dcddff2119623e25be63ef5cb6e";
 
 function amt(val) {
     // return val.toString() + "000000000000000000";
     return  parseFloat(val).toFixed(18).replace(".","").toString();
-
-
-
 }
 
 function check_revert(e,fSignature) {

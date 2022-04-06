@@ -20,6 +20,7 @@ contract Storage {
 
     bool internal _locked;
     bool internal _initialized;
+    bool _shared;
 
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
