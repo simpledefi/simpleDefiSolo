@@ -124,7 +124,28 @@ contract combineApp is Storage, Ownable, AccessControl {
         addFunds(_slot,_bal);
         emit sdNewPool(_fromPoolId,_toPoolId);
     }
-    
+
+    ///@notice Swap funds from one pool/exchnage to another pool/exchange in a different contract
+    ///@param _toContract the address of the contract to swap to
+    ///@param _fromPoolId id of pool to swap from
+    ///@param _fromExchangeName name of exchange to lookup in slots
+    ///@param _toPoolId id of pool to swap to
+    ///@param _toExchangeName name of exchange to lookup in slots
+    function swapContractPool(uint64 _fromPoolId, string memory _fromExchangeName, address _toContract, uint64 _toPoolId, string memory _toExchangeName) external allowAdmin {
+        //liquidate current user and do not send funds
+        slotsLib.sSlots memory _slot = getSlot(_fromPoolId, _fromExchangeName);
+        
+        if(_toPoolId == _slot.poolId) revert sdRequiredParameter("New pool required");
+        
+        removeLiquidity(_slot);
+        revertBalance(_slot);
+        
+        uint _bal = address(this).balance;
+        if (_bal==0) revert sdInsufficentBalance();
+        combineApp(payable(_toContract)).deposit{value: _bal}(_toPoolId,_toExchangeName);
+    }
+
+
     ///@notice get pending rewards on a specific pool/exchange
     ///@param _poolId id of pool to get pending rewards on
     ///@param _exchangeName name of exchange to lookup in slots

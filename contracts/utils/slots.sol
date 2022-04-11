@@ -26,7 +26,6 @@ library slotsLib {
     }
 
     uint64 constant MAX_SLOTS = 100;
-    uint256 constant MAX_INT = type(uint).max;
 
     error RequiredParameter(string param);
     error InactivePool(uint _poolID);
@@ -84,7 +83,13 @@ library slotsLib {
             }
             if (!_found) {
                 iBeacon.sExchangeInfo memory old_exchangeInfo = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
-                (address _oldLpContract,,,) = iMasterChef(old_exchangeInfo.chefContract).poolInfo(_poolId);
+                address _oldLpContract;
+                if (old_exchangeInfo.psV2){
+                    _oldLpContract = iMasterChefv2(old_exchangeInfo.chefContract).lpToken(_poolId);
+                }
+                else {
+                    (_oldLpContract,,,) = iMasterChef(old_exchangeInfo.chefContract).poolInfo(_poolId);
+                }
                 ERC20(old_exchangeInfo.rewardToken).approve(old_exchangeInfo.routerContract,0);
 
                 ERC20(slots[_slotId].token0).approve(old_exchangeInfo.routerContract,0);
@@ -95,7 +100,16 @@ library slotsLib {
         }
 
         iBeacon.sExchangeInfo memory exchangeInfo = iBeacon(beaconContract).getExchangeInfo(_exchangeName);
-        (address _lpContract,uint _alloc,,) = iMasterChef(exchangeInfo.chefContract).poolInfo(_poolId);
+        address _lpContract;
+        uint _alloc;
+
+        if (exchangeInfo.psV2) {
+            _lpContract = iMasterChefv2(exchangeInfo.chefContract).lpToken(_poolId);
+            (,,_alloc,,) = iMasterChefv2(exchangeInfo.chefContract).poolInfo(_poolId);
+        }
+        else {
+            (_lpContract, _alloc,,) = iMasterChef(exchangeInfo.chefContract).poolInfo(_poolId);
+        }
 
         if (_lpContract == address(0)) revert RequiredParameter("_lpContract");
         if (_alloc == 0) revert InactivePool(_poolId);

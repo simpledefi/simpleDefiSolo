@@ -34,6 +34,7 @@ contract combine_beacon is Ownable {
         string pendingCall;
         string contractType_solo;
         string contractType_pooled;
+        bool psV2;
     }
 
     mapping (string => mapping(string => sFee)) public mFee;
@@ -49,7 +50,7 @@ contract combine_beacon is Ownable {
     event sdDiscountSet(address _user, uint _discount, uint _expires);
     event sdDiscountsSet(uint _count);
     event sdExchangeSet(string  _exchange, address _replacement_logic_contract, uint256 _start);
-    event sdEexchangeInfoSet(string _name, address _chefContract, address _routerContract, address _rewardToken, string _pendingCall,address _intermediateToken, address _baseToken, string _contractType_solo, string _contractType_pooled);
+    event sdEexchangeInfoSet(string _name, address _chefContract, address _routerContract, bool _psV2, address _rewardToken, string _pendingCall,address _intermediateToken, address _baseToken, string _contractType_solo, string _contractType_pooled);
     event sdAddressSet(string _name, address _address);
     event sdDataUintSet(string _key, uint _value);
 
@@ -198,7 +199,7 @@ contract combine_beacon is Ownable {
     ///@param _baseToken FUTURE CODE: Address of the token used as base for all calculations. Currently it is only BNB
     ///@param _contractType_solo Name of Logic Contract to be called  from "getExchange" for solo farming
     ///@param _contractType_pooled Name of Logic Contract to be called  from "getExchange" for pooled farming
-    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall,address _intermediateToken, address _baseToken, string memory _contractType_solo, string memory _contractType_pooled) public onlyOwner {
+    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, bool _psV2, address _rewardToken, string memory _pendingCall,address _intermediateToken, address _baseToken, string memory _contractType_solo, string memory _contractType_pooled) public onlyOwner {
         require(bytes(_name).length > 0, "Name cannot be empty");
         require(_chefContract != address(0), "Chef contract cannot be empty");
         require(_routerContract != address(0), "Route contract cannot be empty");
@@ -209,13 +210,14 @@ contract combine_beacon is Ownable {
 
         mExchangeInfo[_name].chefContract = _chefContract;
         mExchangeInfo[_name].routerContract = _routerContract;
+        mExchangeInfo[_name].psV2 = _psV2;
         mExchangeInfo[_name].rewardToken = _rewardToken;
         mExchangeInfo[_name].pendingCall = _pendingCall;
         mExchangeInfo[_name].intermediateToken = _intermediateToken;
         mExchangeInfo[_name].baseToken = _baseToken;
         mExchangeInfo[_name].contractType_solo = _contractType_solo;
         mExchangeInfo[_name].contractType_pooled = _contractType_pooled;
-        emit sdEexchangeInfoSet(_name, _chefContract, _routerContract, _rewardToken, _pendingCall, _intermediateToken, _baseToken, _contractType_solo, _contractType_pooled);        
+        emit sdEexchangeInfoSet(_name, _chefContract, _routerContract, _psV2, _rewardToken, _pendingCall, _intermediateToken, _baseToken, _contractType_solo, _contractType_pooled);        
     }
     
     ///@notice Get information for exchange

@@ -16,7 +16,10 @@ function amt(val) {
 }
 
 function check_revert(e,fSignature) {
-    return e.data[Object.keys(e.data)[0]]['return'].substring(0,10) == web3.eth.abi.encodeFunctionSignature(fSignature);
+    rv = e.data[Object.keys(e.data)[0]]['return'].substring(0,10);
+    sig = web3.eth.abi.encodeFunctionSignature(fSignature)
+    console.log("ERROR:",rv,sig);
+    return  rv == sig;
 }
 
 function errorSig(e,sig,hex="") {
@@ -34,11 +37,17 @@ contract('combineApp', accounts => {
     let exchangeName = "PANCAKESWAP";
     let new_Pool = 252;
     let swap_ID = 252;
+    let beacon; 
+    let FEE_COLLECTOR;
+    it ("Should set fee Collector", async () => {
+        beacon = await combine_beacon.deployed();
+        FEE_COLLECTOR  = await beacon.getAddress("FEECOLLECTOR");
+        console.log("FEE_COLLECTOR:",FEE_COLLECTOR);
+    });
 
     // pool_ID = swap_ID
     it("Fee should be immediately set", async() => {
         let feeAmt = amt(19);
-        const beacon = await combine_beacon.deployed();
         await beacon.setFee('DEFAULT', 'HARVEST', feeAmt, 0);
         let fee = await beacon.getFee('DEFAULT', 'HARVEST', accounts[0]);
         fee = fee[0].toString();
@@ -73,7 +82,6 @@ contract('combineApp', accounts => {
     it("Should not allow reinitialization", async() => {
         try {
             console.log("start", app.address);
-            const beacon = await combine_beacon.deployed();
             
             let rv = await app.initialize(pool_ID-1, beacon.address, exchangeName, accounts[0]);
             assert(false, "Allowed Reinitialization");
@@ -93,7 +101,8 @@ contract('combineApp', accounts => {
         try {
             await app.swapPool(pool_ID, exchangeName, pool_ID+1, exchangeName, { from: accounts[3] });
             assert(1 == 2, "swapPool Function  should be restricted");
-        } catch (e) {
+        } catch (e) {        
+            console.log(e.message);    
             assert(e.message.includes("Restricted Function"), "swapPool function should be restricted");
         }
     });
@@ -123,14 +132,15 @@ contract('combineApp', accounts => {
         console.log("PC", pc.toString());
         assert(pc != 0, "Pending Cake should not be 0");
 
-        let fee0 = await web3.eth.getBalance(accounts[2]);
+        let fee0 = await web3.eth.getBalance(FEE_COLLECTOR);
         await app.harvest(pool_ID, exchangeName);
         pc = await app.pendingReward(pool_ID, exchangeName);
         console.log("PC after:", pc.toString());
         assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
 
-        let fee1 = await web3.eth.getBalance(accounts[2]);
-        assert(fee1 > fee0, "Fee balance should have increased");
+        let fee1 = await web3.eth.getBalance(FEE_COLLECTOR);
+        console.log("FEE:", fee1.toString(), fee0.toString());
+        assert(parseInt(fee1) > parseInt(fee0), `Fee balance should have increased ${fee1} ${fee0}`);
     });
 
     it("Should clear out cake after deposit", async() => {
@@ -197,14 +207,14 @@ contract('combineApp', accounts => {
         console.log("Cake:",parseInt(pc1,16), parseInt(pc0,16));
         assert(parseInt(pc1,16) > parseInt(pc0,16), "Pendings Cake should increase");
 
-        fee0 = await web3.eth.getBalance(accounts[2]);
+        fee0 = await web3.eth.getBalance(FEE_COLLECTOR);
         await app.harvest(pool_ID, exchangeName);
         pc = await app.pendingReward(pool_ID, exchangeName);
         assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
 
-        fee1 = await web3.eth.getBalance(accounts[2]);
+        fee1 = await web3.eth.getBalance(FEE_COLLECTOR);
         console.log("FEE:", fee1.toString(), fee0.toString());
-        assert(fee1 > fee0, "Fee balance should have increased");
+        assert(parseInt(fee1) > parseInt(fee0), `Fee balance should have increased ${fee1} ${fee0}`);
     });
 
     it("Should reject deposit from 3rd party", async() => {
@@ -299,13 +309,13 @@ contract('combineApp', accounts => {
             console.log("PC", pc.toString());
             assert(pc != 0, "Pending Cake should not be 0");
 
-            fee0 = await web3.eth.getBalance(accounts[2]);
+            fee0 = await web3.eth.getBalance(FEE_COLLECTOR);
             await app.harvest(pool_ID, exchangeName);
             pc = await app.pendingReward(pool_ID, exchangeName);
             assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
 
-            fee1 = await web3.eth.getBalance(accounts[2]);
-            assert(fee1 > fee0, "Fee balance should have increased");
+            fee1 = await web3.eth.getBalance(FEE_COLLECTOR);
+            assert(parseInt(fee1) > parseInt(fee0), `Fee balance should have increased ${fee1} ${fee0}`);
         });
 
         it("Should clear out reward after deposit", async() => {
@@ -360,13 +370,13 @@ contract('combineApp', accounts => {
             pc1 = await app.pendingReward(pool_ID, exchangeName);
             assert(pc1 > pc0, "Pending Cake should increase");
 
-            fee0 = await web3.eth.getBalance(accounts[2]);
+            fee0 = await web3.eth.getBalance(FEE_COLLECTOR);
             await app.harvest(pool_ID, exchangeName);
             pc = await app.pendingReward(pool_ID, exchangeName);
             assert(pc == 0, "After Harvest Pending Cake should be 0 showing: " + pc.toString());
 
-            fee1 = await web3.eth.getBalance(accounts[2]);
-            assert(fee1 > fee0, "Fee balance should have increased");
+            fee1 = await web3.eth.getBalance(FEE_COLLECTOR);
+            assert(parseInt(fee1) > parseInt(fee0), `Fee balance should have increased ${fee1} ${fee0}`);
         });
 
         it("Should reject deposit from 3rd party", async() => {

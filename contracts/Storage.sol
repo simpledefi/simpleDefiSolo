@@ -8,9 +8,6 @@ import "./utils/slots.sol";
 contract Storage {
     uint64 public holdBack;
     uint256 public lastGas;
-    uint256 constant MAX_INT = type(uint).max;
-    
-    address constant WBNB_ADDR = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
     address public logic_contract;
     address internal feeCollector;
     address public beaconContract;
