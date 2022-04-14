@@ -93,7 +93,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     //@notice Add funds to specified pool and exhange
     ///@param _poolId id of pool to add funds to
     ///@param _exchangeName name of exchange to lookup on beacon
-    function deposit(uint64 _poolId, string memory _exchangeName) external onlyOwner payable  {
+    function deposit(uint64 _poolId, string memory _exchangeName) external payable  {
         slotsLib.sSlots memory _slot = slotsLib.getDepositSlot(_poolId, _exchangeName,slots, beaconContract);
         uint deposit_amount = msg.value;
         uint pendingReward_val =  pendingReward(_slot);
@@ -142,7 +142,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         
         uint _bal = address(this).balance;
         if (_bal==0) revert sdInsufficentBalance();
-        combineApp(payable(_toContract)).deposit{value: _bal}(_toPoolId,_toExchangeName);
+        iSimpleDefiSolo(payable(_toContract)).deposit{value: _bal}(_toPoolId,_toExchangeName);
     }
 
 

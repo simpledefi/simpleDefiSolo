@@ -108,3 +108,7 @@ interface iBeacon {
 interface iWBNB {
     function withdraw(uint wad) external;
 }
+
+interface iSimpleDefiSolo {
+    function deposit(uint64 _poolId, string memory _exchangeName) external payable;  
+}

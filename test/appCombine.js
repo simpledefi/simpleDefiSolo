@@ -435,5 +435,26 @@ contract('combineApp', accounts => {
             console.log("WBNB Balance:",balance)
             assert(balance == 0, "Should not have any WBNB left");
         });
+
+        it('should deploy new instance of combineApp and swap', async () => {
+            let pF = await proxyFactory.deployed();
+            console.log("proxyFactory: ", pF.address);
+            let addr = await pF.getAddress(pool_ID);
+    
+            console.log("Pre:",addr);
+            let n_exchangeName = 'BABYSWAP';
+            let n_pool_ID = 28;
+            await pF.initialize(n_pool_ID,n_exchangeName,0,{value: amt(0)});
+            let proxyAddr = await pF.getLastProxy(accounts[0]);
+            let app2 = await combineApp.at(proxyAddr);
+    
+            console.log("LP :", proxyAddr);
+            console.log("Done deploy");
+            app.swapContractPool(pool_ID, exchangeName, app2.address,n_pool_ID,n_exchangeName);
+            console.log("Done swap");
+            let userinfo = await app2.userInfo(n_pool_ID, n_exchangeName);
+            console.log("Init ID:", JSON.stringify(userinfo));
+    
+        });        
     }
 });

@@ -6,7 +6,7 @@ interface iApp {
 }
 
 interface prBeacon {
-    function mExchanges(string memory _exchange) external returns(address);
+    function getExchange(string memory _exchange) external returns(address);
     function getAddress(string memory _exchange) external returns(address);
     function getContractType(string memory _name, uint _type) external returns (string memory _contract);
 }
@@ -55,7 +55,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     function setExchange(string memory _exchange) public allowAdmin returns (bool success){
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
-        logic_contract = prBeacon(beaconContract).mExchanges(_exchange);
+        logic_contract = prBeacon(beaconContract).getExchange(_exchange);
         require(logic_contract != address(0), "Logic Contract required - setExchange");
         return true;
     }
