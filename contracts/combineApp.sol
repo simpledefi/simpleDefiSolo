@@ -431,10 +431,11 @@ contract combineApp is Storage, Ownable, AccessControl {
         return iMasterChef(_slot.chefContract).cakePerBlock();
     }    
     
-    ///@notice Helper function to force a pool to be updated
-    ///@dev for testing purrposes
+    ///@notice helper function to force a pool update
     ///@param _poolId pool to get info from
     ///@param _exchangeName name of exchange to lookup in slots
+    ///@dev Not part of simpleDefi app, just proxy to ensure proper masterChef and pool Id are called. 
+    ///@dev Does not affect our app in any way, needed for testing.
     function updatePool(uint64  _poolId, string memory _exchangeName) public {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
 
