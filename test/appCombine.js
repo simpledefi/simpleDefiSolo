@@ -10,6 +10,9 @@ const base_proxy = artifacts.require("combine_proxy");
 const ERC20 = artifacts.require("ERC20");
 let OWNER_ADDR = "0x0e0435b1ab9b9dcddff2119623e25be63ef5cb6e";
 
+const _salt = function() {return  (Math.random()*1e18).toString();};
+
+
 function amt(val) {
     // return val.toString() + "000000000000000000";
     return  parseFloat(val).toFixed(18).replace(".","").toString();
@@ -57,13 +60,13 @@ contract('combineApp', accounts => {
 
     it('should deploy combineApp with initial deposit of 125', async () => {
         let pF = await proxyFactory.deployed();
+        let salt = _salt();
         console.log("proxyFactory: ", pF.address);
-        let addr = await pF.getAddress(pool_ID);
+        let addr = await pF.getAddress(salt);
 
         console.log("Pre:",addr);
-        let _salt = Math.random()*1e18
-
-        await pF.initialize(pool_ID,exchangeName,0,_salt,{value: amt(.0125)});
+        
+        await pF.initialize(pool_ID,exchangeName,0,salt,{value: amt(.0125), from: accounts[0]});
         let proxyAddr = await pF.getLastProxy(accounts[0]);
         app = await combineApp.at(proxyAddr);
 

@@ -88,20 +88,22 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     }
 }
 
-contract proxyFactory is Ownable {
+contract proxyFactory is Ownable, AccessControl {
     address public beaconContract;
 
     mapping (address => address[]) public proxyContracts;
     address[] public proxyContractsUsers;
 
     event NewProxy(address proxy, address user);
+    bytes32 public constant DEPLOYER = keccak256("DEPLOYER");
 
 
     ///@notice Initialize the proxy factory contract
     ///@param _beacon the address of the beacon contract
-    constructor (address _beacon) {
+    constructor (address _beacon, address _admin) {
         require(_beacon != address(0), "Beacon Contract required");
         beaconContract = _beacon;
+        _setupRole(DEPLOYER, _admin);
     }
 
     ///@notice Sets the address of the beacon contract
@@ -136,12 +138,14 @@ contract proxyFactory is Ownable {
     ///@param _exchange the name of the exchange
     ///@param _poolType the type of the pool (0=solo, 1=pool)
     ///@return the address of the proxy contract
-    function initialize(uint64  _pid, string memory _exchange, uint _poolType) public payable onlyOwner returns (address) {        
+    function initialize(uint64  _pid, string memory _exchange, uint _poolType, uint _salt) public payable onlyOwner returns (address) {        
         require(beaconContract != address(0), "Beacon Contract required");
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
+        require(_salt > 0, "Salt must be provided");
+
         string memory _contract = prBeacon(beaconContract).getContractType(_exchange,_poolType);
 
-        address proxy = deploy(_pid);
+        address proxy = deploy(_salt,_poolType);
         proxyContracts[msg.sender].push(address(proxy));
         proxyContractsUsers.push(msg.sender);
         combine_proxy(payable(proxy)).initialize(_contract, beaconContract, msg.sender,_poolType);
@@ -162,11 +166,12 @@ contract proxyFactory is Ownable {
 
     ///@notice generates an address of a new proxy contract
     ///@dev used in front end
-    ///@param _pid the pool id
+    ///@param _salt the salt value for the address
     ///@return the address of the proxy contract
-    function getAddress(uint _pid) public view returns (address)
+    function getAddress(uint _salt) public view returns (address)
     {
-        bytes32 newsalt = keccak256(abi.encodePacked(_pid,msg.sender));
+        require(_salt > 0, "Salt must be provided");
+        bytes32 newsalt = keccak256(abi.encodePacked(_salt,msg.sender));
 
         bytes memory bytecode = getBytecode();
         bytes32 hash = keccak256(
@@ -176,11 +181,28 @@ contract proxyFactory is Ownable {
         return address(uint160(uint(hash)));
     }    
 
+    ///@notice adds new user to administrator role
+    ///@param _user the address of the user
+
+    function addAdmin(address _user) public onlyOwner {
+        _setupRole(DEPLOYER, _user);
+    }
+
+    ///@notice removes user from administrator role
+    ///@param _user the address of the user
+    function removeAdmin(address _user) public onlyOwner {
+        revokeRole(DEPLOYER, _user);
+    }
+
     ///@notice deploys bytecode of proxy contract
-    ///@param _pid the pool id
+    ///@param _salt salt value for the address
     ///@return addr the address of the proxy contract
-    function deploy(uint _pid) public payable returns (address addr){
-        bytes32 newsalt = keccak256(abi.encodePacked(_pid,msg.sender));
+    ///@dev Public Payable becuase solo contracts can create contract with value
+    ///@dev Pooled contracts can only be created by deployer
+    function deploy(uint _salt,uint _poolType) public payable returns (address addr){
+        require(_poolType == 0 || (_poolType == 1 && hasRole(DEPLOYER,msg.sender)),"Restricted Function");
+
+        bytes32 newsalt = keccak256(abi.encodePacked(_salt,msg.sender));
         bytes memory bytecode = getBytecode();
 
         assembly {
