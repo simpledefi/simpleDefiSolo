@@ -13,7 +13,7 @@ function amt(val) {
 let app;
 
 contract('combineApp', accounts => {
-    let pool_ID = 251; //BUSD-BNB
+    let pool_ID = 2; //BUSD-BNB
 
     it('should deploy combineApp with initial deposit of 125', async () => {
         let pF = await proxyFactory.at("0x93aB5B17739c25D836a949e7F74daD8bDBb0Ec62");

@@ -91,10 +91,7 @@ module.exports = async function(deployer, network, accounts) {
         await beacon.setAddress("ADMINUSER",accounts[0],{from: OWNER_ADDR});
         console.log("ADMINUSER:", await beacon.getAddress("ADMINUSER"));
         await beacon.setAddress("FEECOLLECTOR",'0x42a515c1EDB651F4c69c56E05578D2805D6451eB',{from: OWNER_ADDR});
-        console.log("FEECOLLECTOR:", await beacon.getAddress("FEECOLLECTOR"));
-        
-        // console.log("Setting up PROXY App for testing");
-        // await deployer.deploy(252, proxyApp, 'MULTIEXCHANGE', beaconApp.address, accounts[0]);
+        console.log("FEECOLLECTOR:", await beacon.getAddress("FEECOLLECTOR"));     
     }
     else {        
         console.log("Setting HARVEST/COLLECTOR");
