@@ -8,6 +8,10 @@ function amt(val) {
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+/*
+'0x73feaa1eE314F8c655E354234017bE2193C9E24E', //chefContract
+'0x10ED43C718714eb63d5aA57B78B54704E256024E', //routerContract
+*/
 
 module.exports = async function(deployer, network, accounts) {
     const OWNER_ADDR = accounts[0];
@@ -17,9 +21,9 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log("Setting Pancakeswap");
     await beacon.setExchangeInfo('PANCAKESWAP',
-        '0x73feaa1eE314F8c655E354234017bE2193C9E24E', //chefContract
+        '0xa5f8C5Dbd5F286960b9d90548680aE5ebFf07652', //chefContract
         '0x10ED43C718714eb63d5aA57B78B54704E256024E', //routerContract
-        false,                                        // Is Pancakeswap V2?
+        true,                                        // Is Pancakeswap V2?
         '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', //rewardToken
         'pendingCake(uint256,address)',
         '0x0000000000000000000000000000000000000000',

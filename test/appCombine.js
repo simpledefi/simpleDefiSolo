@@ -33,10 +33,10 @@ function errorSig(e,sig,hex="") {
 let app;
 
 contract('combineApp', accounts => {
-    let pool_ID = 251; //BUSD-BNB
+    let pool_ID = 2; //BUSD-BNB
     let exchangeName = "PANCAKESWAP";
-    let new_Pool = 252;
-    let swap_ID = 252;
+    let new_Pool = 3;
+    let swap_ID = 3;
     let beacon; 
     let FEE_COLLECTOR;
     it ("Should set fee Collector", async () => {
