@@ -423,14 +423,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
     }
     
-    ///@notice Helper function for front end
-    ///@param _poolId pool to get info from
-    ///@param _exchangeName name of exchange to lookup in slots
-    function cakePerBlock(uint64  _poolId, string memory _exchangeName) public view returns(uint) {
-        slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
-        return iMasterChef(_slot.chefContract).cakePerBlock();
-    }    
-    
     ///@notice helper function to force a pool update
     ///@param _poolId pool to get info from
     ///@param _exchangeName name of exchange to lookup in slots
