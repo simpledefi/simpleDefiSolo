@@ -49,9 +49,12 @@ module.exports = {
     live: {
       provider: () => new HDWalletProvider(deploy_config.privateKey, deploy_config.deployNode),
       network_id: 56,
-      confirmations: 10,
+      // confirmations: 10,
       timeoutBlocks: 200,
-      skipDryRun: true
+      skipDryRun: true,
+      pollingInterval: 1800000, // avoids too many requests
+      disableConfirmationListener: true, // avoids too many requests
+
     }
     // return new HDWalletProvider(deploy_config.privateKey, "http://127.0.0.1:8545");
     // Another network with more advanced options...
