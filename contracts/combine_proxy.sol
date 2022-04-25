@@ -138,7 +138,7 @@ contract proxyFactory is Ownable, AccessControl {
     ///@param _exchange the name of the exchange
     ///@param _poolType the type of the pool (0=solo, 1=pool)
     ///@return the address of the proxy contract
-    function initialize(uint64  _pid, string memory _exchange, uint _poolType, uint _salt) public payable onlyOwner returns (address) {        
+    function initialize(uint64  _pid, string memory _exchange, uint _poolType, uint _salt) public payable returns (address) {        
         require(beaconContract != address(0), "Beacon Contract required");
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
         require(_salt > 0, "Salt must be provided");

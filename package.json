@@ -23,6 +23,7 @@
     "web3": "^1.6.1"
   },
   "devDependencies": {
-    "eth-gas-reporter": "^0.2.24"
+    "eth-gas-reporter": "^0.2.24",
+    "truffle-plugin-verify": "^0.5.25"
   }
 }

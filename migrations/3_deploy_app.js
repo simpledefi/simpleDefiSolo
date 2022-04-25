@@ -13,5 +13,6 @@ module.exports = async function(deployer, network, accounts) {
     await deployer.deploy(combineApp);
 
     var beacon = await beaconApp.deployed();
+    
     await beacon.setExchange('MULTIEXCHANGE', combineApp.address, 0);
 }
