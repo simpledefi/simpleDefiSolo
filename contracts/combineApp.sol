@@ -245,23 +245,17 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint amount0;
         uint amount1;
         uint split;
-        address[] memory swapPath = new address[](2);
-        swapPath[0] = WBNB_ADDR;
-        swapPath[1] = _slot.token0;
 
         if (_slot.token0 == WBNB_ADDR || _slot.token1 == WBNB_ADDR) {
             split = (inValue*50)/100;        
-            amount0 = (_slot.token0 != WBNB_ADDR) ? swap(_slot,split,swapPath) : split;    
-            swapPath[1] = _slot.token1;
-            amount1 = (_slot.token1 != WBNB_ADDR) ? swap(_slot,split,swapPath) : split;
+            amount0 = (_slot.token0 != WBNB_ADDR) ? swap(_slot,split,WBNB_ADDR,_slot.token0) : split;    
+            amount1 = (_slot.token1 != WBNB_ADDR) ? swap(_slot,split,WBNB_ADDR, _slot.token1) : split;
         }
         else {
-            amount0 = swap(_slot, inValue,swapPath);    
+            amount0 = swap(_slot, inValue,WBNB_ADDR,_slot.token0);    
             split = (amount0*50)/100;  
             split = split - ((split*(SwapFee/100))/1e8);
-            swapPath[0] = _slot.token0;
-            swapPath[1] = _slot.token1;
-            amount1 = swap(_slot, split,swapPath);
+            amount1 = swap(_slot, split,_slot.token0,_slot.token1);
         }
 
         addLiquidity(_slot,amount0,amount1);
@@ -294,13 +288,27 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@notice Internal function to swap 2 tokens
     ///@param _slot slot to swap tokens on
     ///@param amountIn amount of tokens to swap
-    ///@param path address of tokens to swap
+    ///@param _token0 address of tokens to swap
+    ///@param _token1 address of tokens to swap
     ///@return amountOut amount of tokens swapped
-    function swap(slotsLib.sSlots memory _slot, uint amountIn, address[] memory path) private returns (uint){
+    function swap(slotsLib.sSlots memory _slot, uint amountIn, address _token0, address _token1) private returns (uint){
         if (amountIn == 0) revert sdInsufficentBalance();
 
+        uint pathLength = (_slot.intermediateToken != address(0) && _token0 != _slot.intermediateToken && _token1 != _slot.intermediateToken) ? 3 : 2;
+        address[] memory swapPath = new address[](pathLength);
+        
+        if (pathLength == 2) {
+            swapPath[0] = _token0;
+            swapPath[1] = _token1;
+        }
+        else {
+            swapPath[0] = _token0;
+            swapPath[1] = _slot.intermediateToken;
+            swapPath[2] = _token1;
+        }
+
         uint _cBalance = address(this).balance;
-        if (path[0] == WBNB_ADDR && path[path.length-1] == WBNB_ADDR) {
+        if (swapPath[0] == WBNB_ADDR && swapPath[swapPath.length-1] == WBNB_ADDR) {
             if (ERC20(WBNB_ADDR).balanceOf(address(this)) >= amountIn) {
                 iWBNB(WBNB_ADDR).withdraw(amountIn);
                 _cBalance = address(this).balance;
@@ -309,31 +317,18 @@ contract combineApp is Storage, Ownable, AccessControl {
             return amountIn;
         }
 
-        uint pathLength = (_slot.intermediateToken != address(0) && path[0] != _slot.intermediateToken && path[1] != _slot.intermediateToken) ? 3 : 2;
-        address[] memory swapPath = new address[](pathLength);
-        
-        if (pathLength == 2) {
-            swapPath[0] = path[0];
-            swapPath[1] = path[1];
-        }
-        else {
-            swapPath[0] = path[0];
-            swapPath[1] = _slot.intermediateToken;
-            swapPath[2] = path[1];
-        }
-
         uint[] memory amounts;
 
         uint deadline = block.timestamp + 600;
 
-        if (path[0] == WBNB_ADDR && ERC20(WBNB_ADDR).balanceOf(address(this)) >= amountIn) {
+        if (swapPath[0] == WBNB_ADDR && ERC20(WBNB_ADDR).balanceOf(address(this)) >= amountIn) {
             iWBNB(WBNB_ADDR).withdraw(amountIn);
             _cBalance = address(this).balance;
         }
 
-        if (path[path.length - 1] == WBNB_ADDR) {
+        if (swapPath[swapPath.length - 1] == WBNB_ADDR) {
             amounts = iRouter(_slot.routerContract).swapExactTokensForETH(amountIn, 0,  swapPath, address(this), deadline);
-        } else if (path[0] == WBNB_ADDR && _cBalance >= amountIn) {
+        } else if (swapPath[0] == WBNB_ADDR && _cBalance >= amountIn) {
             amounts = iRouter(_slot.routerContract).swapExactETHForTokens{value: amountIn}(0,swapPath,address(this),deadline);
         }
         else {
@@ -362,11 +357,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         iMasterChef(_slot.chefContract).deposit(_slot.poolId,0);
         pendingCake = ERC20(_slot.rewardToken).balanceOf(address(this));
 
-        address[] memory path = new address[](2);
-        path[0] = _slot.rewardToken;
-        path[1] = WBNB_ADDR;
-
-        pendingCake = swap(_slot, pendingCake,path);
+        pendingCake = swap(_slot, pendingCake,_slot.rewardToken, WBNB_ADDR);
         
         uint finalReward = sendFee('HARVEST',pendingCake, ((lastGas * tx.gasprice)*10e8)); // lastGas is here in case 3rd party harvester is used, should normally be 0
         
@@ -404,26 +395,21 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@notice Internal function to convert token0/token1 to BNB/Base Token
     ///@param _slot slot to convert
     function revertBalance(slotsLib.sSlots memory _slot) private {
-        address[] memory path = new address[](2);
-        path[1] = WBNB_ADDR;
         uint amount0 = 0;
 
         uint _rewards = ERC20(_slot.rewardToken).balanceOf(address (this));
         if (_rewards > 0 ){
-            path[0] = _slot.rewardToken;
-            amount0 = swap(_slot, _rewards, path);
+            amount0 = swap(_slot, _rewards, _slot.rewardToken, WBNB_ADDR);
         }
 
         (uint _bal0, uint _bal1) = tokenBalance(_slot);
         
         if (_bal0 > 0) {
-            path[0] = _slot.token0;
-            amount0 += swap(_slot, _bal0, path);
+            amount0 += swap(_slot, _bal0, _slot.token0, WBNB_ADDR);
         }
         
         if (_bal1 > 0) {
-            path[0] = _slot.token1;
-            amount0 += swap(_slot, _bal1, path);
+            amount0 += swap(_slot, _bal1, _slot.token1, WBNB_ADDR);
         }
     }
     
