@@ -83,6 +83,21 @@ contract combine_beacon is Ownable {
 
         return (amount,expires);
     }
+    ///@notice Calculate fee without discount from user
+    ///@param _exchange Exchange name
+    ///@param _type Type of fee
+    ///@return amount - amount of the fee
+    ///@return expires - unix timestamp when the discount expires
+    function getFee(string memory _exchange, string memory _type) external view returns (uint,uint) {
+        sFee memory rv = mFee[_exchange][_type];
+        if (rv.replacement_amount == 0 && rv.current_amount == 0) {
+            rv = mFee['DEFAULT'][_type];
+        }
+        uint amount =  (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
+        return (amount,0); 
+    }
+
+
     ///@notice get a constant setting and check for new value baed on timestamp
     ///@param _exchange Exchange name
     ///@param _type Name of constant

@@ -48,6 +48,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         address harvester = iBeacon(beaconContract).getAddress("HARVESTER");
         feeCollector = iBeacon(beaconContract).getAddress("FEECOLLECTOR");
+        (SwapFee,) = iBeacon(beaconContract).getFee(_exchangeName,"SWAPFEE"); //SWAP FEE is 1e8
 
         _setupRole(HARVESTER, harvester);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
@@ -110,15 +111,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@param _toPoolId id of pool to swap to
     ///@param _toExchangeName name of exchange to lookup in slots
     function swapPool(uint64 _fromPoolId, string memory _fromExchangeName, uint64 _toPoolId, string memory _toExchangeName) public allowAdmin {
-        slotsLib.sSlots memory _slot = getSlot(_fromPoolId, _fromExchangeName);
-        
-        if(_toPoolId == _slot.poolId) revert sdRequiredParameter("New pool required");
-        
-        removeLiquidity(_slot);
-        revertBalance(_slot);
-        
-        uint _bal = address(this).balance;
-        if (_bal==0) revert sdInsufficentBalance();
+        (uint _bal, slotsLib.sSlots memory _slot) = doSwap(_fromPoolId, _toPoolId, _fromExchangeName);
         
         _slot = slotsLib.swapSlot(_fromPoolId, _fromExchangeName,_toPoolId, _toExchangeName,slots, beaconContract);
         addFunds(_slot,_bal);
@@ -133,16 +126,28 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@param _toExchangeName name of exchange to lookup in slots
     function swapContractPool(uint64 _fromPoolId, string memory _fromExchangeName, address _toContract, uint64 _toPoolId, string memory _toExchangeName) external allowAdmin {
         //liquidate current user and do not send funds
+        (uint _bal, ) = doSwap(_fromPoolId, _toPoolId, _fromExchangeName);
+
+        iSimpleDefiSolo(payable(_toContract)).deposit{value: _bal}(_toPoolId,_toExchangeName);
+    }
+
+    ///@notice Performs common swap function
+    ///@param _fromPoolId id of pool to swap from
+    ///@param _toPoolId id of pool to swap to
+    ///@param _fromExchangeName name of exchange to lookup in slots
+    ///@return _bal the amount of funds to send to the new pool
+    ///@return _slot the new slot
+
+    function doSwap(uint64 _fromPoolId, uint64 _toPoolId,string memory _fromExchangeName) private returns (uint, slotsLib.sSlots memory) {
         slotsLib.sSlots memory _slot = getSlot(_fromPoolId, _fromExchangeName);
-        
         if(_toPoolId == _slot.poolId) revert sdRequiredParameter("New pool required");
-        
+                
         removeLiquidity(_slot);
         revertBalance(_slot);
         
         uint _bal = address(this).balance;
         if (_bal==0) revert sdInsufficentBalance();
-        iSimpleDefiSolo(payable(_toContract)).deposit{value: _bal}(_toPoolId,_toExchangeName);
+        return (_bal, _slot);
     }
 
 
@@ -239,27 +244,26 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         uint amount0;
         uint amount1;
-        uint split = (inValue*50)/100;
-        
-        if (_slot.token0 != WBNB_ADDR) {
-            address[] memory path1 = new address[](2);
-            path1[0] = WBNB_ADDR;
-            path1[1] = _slot.token0;
-            amount0 = swap(_slot, split,path1);
+        uint split;
+        address[] memory swapPath = new address[](2);
+        swapPath[0] = WBNB_ADDR;
+        swapPath[1] = _slot.token0;
+
+        if (_slot.token0 == WBNB_ADDR || _slot.token1 == WBNB_ADDR) {
+            split = (inValue*50)/100;        
+            amount0 = (_slot.token0 != WBNB_ADDR) ? swap(_slot,split,swapPath) : split;    
+            swapPath[1] = _slot.token1;
+            amount1 = (_slot.token1 != WBNB_ADDR) ? swap(_slot,split,swapPath) : split;
         }
-        else{
-            amount0 = split;
+        else {
+            amount0 = swap(_slot, inValue,swapPath);    
+            split = (amount0*50)/100;  
+            split = split - ((split*(SwapFee/100))/1e8);
+            swapPath[0] = _slot.token0;
+            swapPath[1] = _slot.token1;
+            amount1 = swap(_slot, split,swapPath);
         }
-        
-        if (_slot.token1 != WBNB_ADDR) {
-            address[] memory path2 = new address[](2);
-            path2[0] = WBNB_ADDR;
-            path2[1] = _slot.token1;
-            amount1 = swap(_slot, split,path2);
-        }       
-        else{
-            amount1 = split;
-        }
+
         addLiquidity(_slot,amount0,amount1);
     }
 

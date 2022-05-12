@@ -118,5 +118,7 @@ module.exports = async function(deployer, network, accounts) {
     console.log("Harvest")
     await beacon.setFee('DEFAULT', 'HARVEST', amt(19), 0,{from: OWNER_ADDR});    
     if (config.network != "development") await sleep(500);
+    await beacon.setFee('DEFAULT','SWAPFEE',2500000,0,{from: OWNER_ADDR});
+    if (config.network != "development") await sleep(500);
     console.log("DONE");
 }

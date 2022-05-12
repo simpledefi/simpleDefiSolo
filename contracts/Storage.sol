@@ -25,4 +25,5 @@ contract Storage {
     //New Variables after this only
 
     slotsLib.slotStorage[] public slots;
+    uint SwapFee;
 }

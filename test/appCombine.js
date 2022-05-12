@@ -32,14 +32,13 @@ function errorSig(e,sig,hex="") {
     return functionSig == rv.substring(0,functionSig.length);
 }
 
-let app;
+let app,beacon;
 
 contract('combineApp', accounts => {
     let pool_ID = 2; //BUSD-BNB
     let exchangeName = "PANCAKESWAP";
     let new_Pool = 3;
     let swap_ID = 3;
-    let beacon; 
     let FEE_COLLECTOR;
     const TEST_ACCOUNT = accounts[3];
     it ("Should set fee Collector", async () => {
@@ -52,7 +51,7 @@ contract('combineApp', accounts => {
     it("Fee should be immediately set", async() => {
         let feeAmt = amt(19);
         await beacon.setFee('DEFAULT', 'HARVEST', feeAmt, 0);
-        let fee = await beacon.getFee('DEFAULT', 'HARVEST', accounts[0]);
+        let fee = await beacon.getFee('DEFAULT', 'HARVEST');
         fee = fee[0].toString();
         console.log("Fee Set:",feeAmt,fee);
         assert(fee == feeAmt, "Fee Not Set");
