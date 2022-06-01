@@ -26,4 +26,5 @@ contract Storage {
 
     slotsLib.slotStorage[] public slots;
     uint SwapFee;
+    uint public revision;
 }

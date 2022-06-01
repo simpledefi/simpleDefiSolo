@@ -57,6 +57,8 @@ contract combineApp is Storage, Ownable, AccessControl {
         
         setup(_poolId, _exchangeName);
         transferOwnership(_owner);
+        revision = 1;
+        
         emit sdInitialize(_poolId, _beacon,_exchangeName,_owner);
     }
 
