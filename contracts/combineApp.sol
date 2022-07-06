@@ -9,7 +9,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     event sdUintLog( string message, uint[] value);
     event sdDeposit(uint amount);
     event sdHoldBack(uint amount, uint total);
-    event sdFeeSent(uint amount,uint total);
+    event sdFeeSent(address _user, bytes16 _type, uint amount,uint total);
     event sdNewPool(uint64 oldPool, uint newPool);
     event sdLiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
     event sdInitialized(uint64 poolId, address lpContract);
@@ -48,7 +48,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         address harvester = iBeacon(beaconContract).getAddress("HARVESTER");
         feeCollector = iBeacon(beaconContract).getAddress("FEECOLLECTOR");
-        (SwapFee,) = iBeacon(beaconContract).getFee(_exchangeName,"SWAPFEE"); //SWAP FEE is 1e8
+        (SwapFee,) = iBeacon(beaconContract).getFee(_exchangeName,"SWAPFEE",address(0)); //SWAP FEE is 1e8
 
         _setupRole(HARVESTER, harvester);
         _setupRole(DEFAULT_ADMIN_ROLE,owner());
@@ -83,7 +83,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         slotsLib.sSlots memory _slot = slotsLib.updateSlot(uint64(slotsLib.MAX_SLOTS+1),_poolId,_exchangeName, slots, beaconContract);
 
         if (msg.value > 0) {
-            addFunds(_slot, msg.value);
+            addFunds(_slot, msg.value,true);
             emit sdDeposit(msg.value);
         }
         emit sdInitialized(_poolId,_slot.lpContract);
@@ -103,7 +103,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         if (pendingReward_val > 0) {
             deposit_amount = deposit_amount + do_harvest(_slot, 0);
         }
-        addFunds(_slot, deposit_amount);
+        addFunds(_slot, deposit_amount,true);
         emit sdDeposit(deposit_amount);
     }
 
@@ -116,7 +116,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         (uint _bal, slotsLib.sSlots memory _slot) = doSwap(_fromPoolId, _toPoolId, _fromExchangeName);
         
         _slot = slotsLib.swapSlot(_fromPoolId, _fromExchangeName,_toPoolId, _toExchangeName,slots, beaconContract);
-        addFunds(_slot,_bal);
+        addFunds(_slot,_bal,false);
         emit sdNewPool(_fromPoolId,_toPoolId);
     }
 
@@ -185,7 +185,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint _total = address(this).balance;
         slotsLib.removeSlot(_slot.poolId, _slot.exchangeName,slots);
 
-        _total = sendFee("LIQUIDATE",_total,0);
+        _total = sendFee("SOLOLIQUIDATE",_total,0);
 
         payable(owner()).transfer(_total);
         emit sdUintLog("Liquidate Total",_total);
@@ -215,7 +215,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint startGas = gasleft() + 21000 + _offset;
         uint split = do_harvest(_slot, 1);
         
-        addFunds(_slot, split);
+        addFunds(_slot, split,false);
         if (msg.sender != owner()) {
             lastGas = startGas - gasleft();
         }
@@ -241,8 +241,11 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@notice Internal funciton to add funds to a specified slot
     ///@param _slot slot to add funds to
     ///@param inValue amount of funds to add
-    function addFunds(slotsLib.sSlots memory _slot, uint inValue) private  {
+    function addFunds(slotsLib.sSlots memory _slot, uint inValue, bool _depositFee) private  {
         if (inValue==0) revert sdInsufficentBalance();
+        if (_depositFee) {
+            inValue = sendFee("DEPOSIT",inValue,0);
+        }
 
         uint amount0;
         uint amount1;
@@ -456,8 +459,9 @@ contract combineApp is Storage, Ownable, AccessControl {
         (uint feeAmt,) = iBeacon(beaconContract).getFee('DEFAULT',_type,owner());
         uint feeAmount = ((_total * feeAmt)/100e18) + _extra;
         if (feeAmount > _total) feeAmount = _total; // required to recover fee
-        
-        if(feeAmount > 0) {
+        uint _bal = address(this).balance;
+
+        if(feeAmount > 0 && _bal > feeAmount) {
             if (feeAmount > _total) {
                 feeAmount = _total;
                 _total = 0;
@@ -466,7 +470,8 @@ contract combineApp is Storage, Ownable, AccessControl {
                 _total = _total - feeAmount;
             }
             payable(address(feeCollector)).transfer(feeAmount);
-            emit sdFeeSent(feeAmount,_total);
+            bytes memory _t = bytes(_type);
+            emit sdFeeSent(owner(), bytes16(_t), feeAmount,_total);
         }
         return _total;
     }

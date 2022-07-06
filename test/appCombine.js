@@ -18,27 +18,49 @@ function amt(val) {
 }
 
 function check_revert(e,fSignature) {
-    rv = e.data[Object.keys(e.data)[0]]['return'].substring(0,10);
-    sig = web3.eth.abi.encodeFunctionSignature(fSignature)
-    console.log("ERROR:",rv,sig);
-    return  rv == sig;
+    // console.log(e);
+    if (e.data) {
+        rv = e.data[Object.keys(e.data)[0]]['return'].substring(0,10);
+        sig = web3.eth.abi.encodeFunctionSignature(fSignature)
+        console.log("ERROR:",rv,sig);
+        return  rv == sig;
+    }
+    if (e.reason == 'Custom error (could not decode)') return fSignature;
+
 }
 
 function errorSig(e,sig,hex="") {
     let functionSig = hex?hex:web3.eth.abi.encodeFunctionSignature(sig);
+    if (e.data) {
 
-    let rv = e.data[Object.keys(e.data)[0]].return;
-    console.log(functionSig,rv.substring(0,functionSig.length),rv);
-    return functionSig == rv.substring(0,functionSig.length);
+        let rv = e.data[Object.keys(e.data)[0]].return;
+        console.log(functionSig,rv.substring(0,functionSig.length),rv);
+        return functionSig == rv.substring(0,functionSig.length);
+    }
+    if (e.reason == 'Custom error (could not decode)') return true;
+}
+
+
+async function dumpLogs(receipt) {
+    let logs = receipt.logs;
+    for (log of logs) {
+        let cnt = 0;
+        console.log("\nLOG:",log.event,log.id);
+        for (arg in log.args) {
+            if (arg != cnt && arg != "__length__") 
+                console.log("\t",arg,JSON.stringify(log.args[arg]))
+            cnt++;
+        }
+    }
 }
 
 let app,beacon;
 
 contract('combineApp', accounts => {
-    let pool_ID = 2; //BUSD-BNB
+    let pool_ID = 3; //BUSD-BNB
     let exchangeName = "PANCAKESWAP";
-    let new_Pool = 3;
-    let swap_ID = 3;
+    let new_Pool = 40;
+    let swap_ID = 40;
     let FEE_COLLECTOR;
     const TEST_ACCOUNT = accounts[3];
     it ("Should set fee Collector", async () => {
@@ -76,7 +98,8 @@ contract('combineApp', accounts => {
     });    
 
     it("Should handle deposit", async() => {
-        await app.deposit(pool_ID, exchangeName,{ value: amt(.005) });
+        tx = await app.deposit(pool_ID, exchangeName,{ value: amt(.5) });
+        dumpLogs(tx)
         let userinfo = await app.userInfo(new_Pool, exchangeName);
         console.log("AFTER:", JSON.stringify(userinfo));
     });
@@ -172,11 +195,12 @@ contract('combineApp', accounts => {
         await app.liquidate(pool_ID, exchangeName,{from: TEST_ACCOUNT});
 
         let balance1 = await web3.eth.getBalance(TEST_ACCOUNT);
-        assert(balance1 > balance0, "Funds not liquidated");
+        console.log(balance1,balance0,balance1>balance0);
+        assert(balance1/1e18 > balance0/1e18, 'Funds not liquidated');
     });
 
     it("Should allow pool swap", async() => {
-        await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
+        // await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
         try {
             let userinfo = await app.userInfo(pool_ID, exchangeName);
             console.log("POOL ID:", JSON.stringify(userinfo));
