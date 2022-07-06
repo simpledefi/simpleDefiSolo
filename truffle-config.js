@@ -22,7 +22,12 @@ console.log(deploy_config.privateKey);
 const HDWalletProvider = require('@truffle/hdwallet-provider');
 
 module.exports = {
-  /**
+  plugins: [
+    'truffle-plugin-verify'
+  ],
+  api_keys: {
+    bscscan: deploy_config.BSCSCANAPIKEY
+  },  /**
    * Networks define how you connect to your ethereum client and let you set the
    * defaults web3 uses to send transactions. If you don't specify one truffle
    * will spin up a development blockchain for you on port 9545 when you
