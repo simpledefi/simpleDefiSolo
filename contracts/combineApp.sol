@@ -364,7 +364,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
         pendingCake = swap(_slot, pendingCake,_slot.rewardToken, WBNB_ADDR);
         
-        uint finalReward = sendFee('HARVEST',pendingCake, ((lastGas * tx.gasprice)*10e8)); // lastGas is here in case 3rd party harvester is used, should normally be 0
+        uint finalReward = sendFee('HARVEST',pendingCake, ((lastGas * tx.gasprice))); // lastGas is here in case 3rd party harvester is used, should normally be 0
         
         if (holdBack > 0) {
             uint holdbackAmount = (finalReward/100) * (holdBack/10**18);
