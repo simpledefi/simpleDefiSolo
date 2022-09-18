@@ -32,6 +32,7 @@ library slotsLib {
     error MaxSlots();
     error SlotOutOfBounds();
     event SlotsUpdated();
+    event SlotsNew(uint _pid, string _exchange);
 
 
     ///@notice Add a new exchange/pool to slot pool
@@ -46,6 +47,7 @@ library slotsLib {
 
         if (slots.length+1 >= MAX_SLOTS) revert MaxSlots();
         updateSlot(MAX_SLOTS+1,_poolId,_exchangeName,slots,beaconContract);
+        emit SlotsNew(_poolId,_exchangeName);
         return uint64(slots.length - 1);
     }
 
@@ -187,6 +189,7 @@ library slotsLib {
     function getDepositSlot(uint64 _poolId, string memory _exchangeName, slotStorage[] storage slots, address beaconContract) internal returns (sSlots memory) {
         uint64 _slotId = find_slot(_poolId,_exchangeName,slots);
         if (_slotId == MAX_SLOTS+1) {
+            emit SlotsNew(_poolId, _exchangeName);
             return updateSlot(uint64(slotsLib.MAX_SLOTS+1), _poolId, _exchangeName, slots, beaconContract);
         }
         else {
