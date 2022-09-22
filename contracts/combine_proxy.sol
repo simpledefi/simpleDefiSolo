@@ -30,7 +30,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     ///@param _beacon the address of the beacon contract
     ///@param _owner the address of the owner
     function initialize (string memory _exchange, address _beacon, address _owner, uint _poolType) public payable onlyOwner {
-        if (_initialized == true) revert sdInitializedError();
+        if (_initialized) revert sdInitializedError();
 
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
