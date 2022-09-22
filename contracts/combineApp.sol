@@ -26,7 +26,7 @@ contract combineApp is Storage, Ownable, AccessControl {
 
     
     modifier lockFunction() {
-        if (_locked == true) revert sdLocked();
+        if (_locked) revert sdLocked();
         _locked = true;
         _;
         _locked = false;
@@ -42,7 +42,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@param _exchangeName name of the exchange to lookup on beacon
     ///@param _owner the address of the owner
     function initialize(uint64 _poolId, address _beacon, string memory _exchangeName, address _owner) public onlyOwner payable {
-        if (_initialized == true) revert sdInitializedError();
+        if (_initialized) revert sdInitializedError();
         _initialized = true;
         beaconContract = _beacon;
 
