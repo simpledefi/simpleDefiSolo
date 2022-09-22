@@ -12,12 +12,12 @@ contract Storage {
     address internal feeCollector;
     address public beaconContract;
     
-    iBeacon.sExchangeInfo exchangeInfo;
+    iBeacon.sExchangeInfo public exchangeInfo;
 
 
     bool internal _locked;
     bool internal _initialized;
-    bool _shared;
+    bool internal _shared;
 
     bytes32 public constant HARVESTER = keccak256("HARVESTER");
 
@@ -25,6 +25,6 @@ contract Storage {
     //New Variables after this only
 
     slotsLib.slotStorage[] public slots;
-    uint SwapFee;
+    uint public SwapFee;
     uint public revision;
 }
