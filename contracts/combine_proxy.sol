@@ -29,7 +29,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     ///@param _exchange the name of the exchange
     ///@param _beacon the address of the beacon contract
     ///@param _owner the address of the owner
-    function initialize (string memory _exchange, address _beacon, address _owner, uint _poolType) public payable onlyOwner {
+    function initialize (string memory _exchange, address _beacon, address _owner, uint _poolType) external payable onlyOwner {
         if (_initialized) revert sdInitializedError();
 
         bytes memory bExchange = bytes(_exchange);
@@ -61,7 +61,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     }
 
     ///@notice Gets the logic contract for the exchange
-    function getLogicContract() public view returns (address) {
+    function getLogicContract() external view returns (address) {
        return logic_contract;
     }
     
@@ -109,14 +109,14 @@ contract proxyFactory is Ownable, AccessControl {
     ///@notice Sets the address of the beacon contract
     ///@dev call when beacon contract gets updated
     ///@param _beaconContract the address of the beacon contract
-    function setBeacon(address _beaconContract) public onlyOwner {
+    function setBeacon(address _beaconContract) external onlyOwner {
         beaconContract = _beaconContract;
     }
 
     ///@notice Allows admin to add an existing proxy contract to the list of proxy contracts for a user
     ///@param _proxyContract the address of the proxy contract
     ///@param _user the address of the user
-    function addProxy(address _proxyContract, address _user) public onlyOwner {
+    function addProxy(address _proxyContract, address _user) external onlyOwner {
         require(_proxyContract != address(0), "Proxy Contract required");
         require(_user != address(0), "User required");
         proxyContracts[_user].push(_proxyContract);
@@ -126,7 +126,7 @@ contract proxyFactory is Ownable, AccessControl {
     ///@notice Returns the last proxy contract created (or added) for a specific user
     ///@param _user the address of the user
     ///@return the address of the proxy contract
-    function getLastProxy(address _user) public view returns (address) {
+    function getLastProxy(address _user) external view returns (address) {
         require(_user != address(0), "User required");
         return proxyContracts[_user][proxyContracts[_user].length - 1];
     }
@@ -138,7 +138,7 @@ contract proxyFactory is Ownable, AccessControl {
     ///@param _exchange the name of the exchange
     ///@param _poolType the type of the pool (0=solo, 1=pool)
     ///@return the address of the proxy contract
-    function initialize(uint64  _pid, string memory _exchange, uint _poolType, uint _salt) public payable returns (address) {        
+    function initialize(uint64  _pid, string memory _exchange, uint _poolType, uint _salt) external payable returns (address) {        
         require(beaconContract != address(0), "Beacon Contract required");
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
         require(_salt > 0, "Salt must be provided");
@@ -168,7 +168,7 @@ contract proxyFactory is Ownable, AccessControl {
     ///@dev used in front end
     ///@param _salt the salt value for the address
     ///@return the address of the proxy contract
-    function getAddress(uint _salt) public view returns (address)
+    function getAddress(uint _salt) external view returns (address)
     {
         require(_salt > 0, "Salt must be provided");
         bytes32 newsalt = keccak256(abi.encodePacked(_salt,msg.sender));
@@ -184,13 +184,13 @@ contract proxyFactory is Ownable, AccessControl {
     ///@notice adds new user to administrator role
     ///@param _user the address of the user
 
-    function addAdmin(address _user) public onlyOwner {
+    function addAdmin(address _user) external onlyOwner {
         _setupRole(DEPLOYER, _user);
     }
 
     ///@notice removes user from administrator role
     ///@param _user the address of the user
-    function removeAdmin(address _user) public onlyOwner {
+    function removeAdmin(address _user) external onlyOwner {
         revokeRole(DEPLOYER, _user);
     }
 
