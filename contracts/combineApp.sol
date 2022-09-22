@@ -259,7 +259,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         else {
             amount0 = swap(_slot, inValue,WBNB_ADDR,_slot.token0);    
             split = (amount0*50)/100;  
-            split = split - ((split*(SwapFee/100))/1e8);
+            split = split - ((split*SwapFee)/1e10); 
             amount1 = swap(_slot, split,_slot.token0,_slot.token1);
         }
 
@@ -367,7 +367,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint finalReward = sendFee('HARVEST',pendingCake, ((lastGas * tx.gasprice))); // lastGas is here in case 3rd party harvester is used, should normally be 0
         
         if (holdBack > 0) {
-            uint holdbackAmount = (finalReward/100) * (holdBack/10**18);
+            uint holdbackAmount = (finalReward * holdBack)/1e20;
             finalReward = finalReward - holdbackAmount;
             payable(owner()).transfer(holdbackAmount);
             emit sdHoldBack(holdbackAmount,finalReward);
