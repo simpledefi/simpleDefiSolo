@@ -146,7 +146,10 @@ library slotsLib {
     function removeSlot(uint _poolId, string memory _exchangeName, slotStorage[] storage slots) internal returns (uint) {
         uint _slotId = find_slot(_poolId,_exchangeName,slots);
         if (_slotId >= slots.length) revert SlotOutOfBounds();
-        slots[_slotId] = slots[slots.length-1];
+        if (slots.length>1) {
+            slots[_slotId] = slots[slots.length-1];
+        }
+        
         slots.pop();
 
         emit SlotsUpdated();
