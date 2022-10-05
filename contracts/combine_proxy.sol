@@ -52,7 +52,7 @@ contract combine_proxy is Storage, Ownable, AccessControl  {
     ///@dev Call function if logic contract gets updated
     ///@param _exchange the name of the exchange
     ///@return success - success or failure
-    function setExchange(string memory _exchange) public allowAdmin returns (bool success){
+    function setExchange(string memory _exchange) external allowAdmin returns (bool success){
         bytes memory bExchange = bytes(_exchange);
         require(bExchange.length > 0, "Exchange is required");
         logic_contract = prBeacon(beaconContract).getExchange(_exchange);
@@ -199,7 +199,7 @@ contract proxyFactory is Ownable, AccessControl {
     ///@return addr the address of the proxy contract
     ///@dev Public Payable becuase solo contracts can create contract with value
     ///@dev Pooled contracts can only be created by deployer
-    function deploy(uint _salt,uint _poolType) public payable returns (address addr){
+    function deploy(uint _salt,uint _poolType) external payable returns (address addr){
         require(_poolType == 0 || (_poolType == 1 && hasRole(DEPLOYER,msg.sender)),"Restricted Function");
 
         bytes32 newsalt = keccak256(abi.encodePacked(_salt,msg.sender));
