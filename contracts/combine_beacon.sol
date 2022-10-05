@@ -1,6 +1,5 @@
 //SPDX-License-Identifier: MIT-open-group
 pragma solidity ^0.8.7;
-pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract combine_beacon is Ownable {
