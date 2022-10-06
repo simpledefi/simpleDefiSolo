@@ -200,17 +200,21 @@ contract('combineApp', accounts => {
     });
 
     it("Should allow pool swap", async() => {
-        // await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
+        await app.deposit(pool_ID, exchangeName,{ value: amt(1) });
+        for(t=0;t<10;t++)
+            await app.updatePool(pool_ID, exchangeName);        
+
         try {
             let userinfo = await app.userInfo(pool_ID, exchangeName);
             console.log("POOL ID:", JSON.stringify(userinfo));
-            await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName,{from: TEST_ACCOUNT});
+            let tx = await app.swapPool(pool_ID, exchangeName,swap_ID,exchangeName,{from: TEST_ACCOUNT});
             userinfo = await app.userInfo(swap_ID, exchangeName);
             console.log("SWAP ID:", JSON.stringify(userinfo));
         }
         catch (e) {
             console.log(e);
-            if (e) assert(errorSig(e,"InactivePool(uint _poolID)","0xc54c27fc"), "Allowed Reinitialization");
+            dumpLogs(tx);
+            if (e) assert(errorSig(e,"InactivePool(uint _poolID)","0xc54c27fc"), "Inactive Pool");
         }
     });
 
