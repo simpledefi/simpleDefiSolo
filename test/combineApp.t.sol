@@ -254,6 +254,18 @@ contract combineAppTest is Test {
         vm.stopPrank();
     }
 
+    function test016_checkInvalidBalance() public {
+        vm.roll(block.number + 1000);
+        tMasterchef(masterchef).updatePool(2);
+
+        uint bal0 = combineApp(payable(appAddr)).pendingReward(47,"BABYSWAP");
+        console.log("BABYSWAP 47:",bal0);
+
+
+        uint bal1 = combineApp(payable(appAddr)).pendingReward(2,"PANCAKESWAP");
+        console.log("PANCAKESWAP 47:",bal1);
+    }
+
     function test999_Setup() public {
         vm.prank(user);
         (uint bal,,,,,) = combineApp(payable(appAddr)).userInfo(2, "PANCAKESWAP");

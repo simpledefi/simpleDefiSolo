@@ -159,6 +159,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@return pending rewards 
     function pendingReward(uint64 _poolId, string memory _exchangeName) public view returns (uint) {        
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
+        if (_slot.poolId == slotsLib.MAX_SLOTS + 1) return 0;
         return pendingReward(_slot);
     }
 
