@@ -23,7 +23,6 @@ contract combineApp is Storage, Ownable, AccessControl {
     error sdInsufficentBalance();
     error sdRequiredParameter(string param);
     error sdInsufficentFunds();
-    bool bitflip;
 
     modifier lockFunction() {
         if (_locked) revert sdLocked();
