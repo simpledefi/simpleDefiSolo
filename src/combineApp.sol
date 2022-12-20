@@ -113,7 +113,8 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@param _toPoolId id of pool to swap to
     ///@param _toExchangeName name of exchange to lookup in slots
     function swapPool(uint64 _fromPoolId, string memory _fromExchangeName, uint64 _toPoolId, string memory _toExchangeName) public allowAdmin {
-        (uint _bal, slotsLib.sSlots memory _slot) = doSwap(_fromPoolId, _toPoolId, _fromExchangeName);
+        if(_fromPoolId == _toPoolId && keccak256(bytes(_fromExchangeName)) == keccak256(bytes(_toExchangeName))) revert sdRequiredParameter("New pool required");
+        (uint _bal, slotsLib.sSlots memory _slot) = doSwap(_fromPoolId, _fromExchangeName);
         
         _slot = slotsLib.swapSlot(_fromPoolId, _fromExchangeName,_toPoolId, _toExchangeName,slots, beaconContract);
         addFunds(_slot,_bal,false);
@@ -128,21 +129,21 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@param _toExchangeName name of exchange to lookup in slots
     function swapContractPool(uint64 _fromPoolId, string memory _fromExchangeName, address _toContract, uint64 _toPoolId, string memory _toExchangeName) external allowAdmin {
         //liquidate current user and do not send funds
-        (uint _bal, ) = doSwap(_fromPoolId, _toPoolId, _fromExchangeName);
+        if(_fromPoolId == _toPoolId && keccak256(bytes(_fromExchangeName)) == keccak256(bytes(_toExchangeName))) revert sdRequiredParameter("New pool required");
+
+        (uint _bal, ) = doSwap(_fromPoolId, _fromExchangeName);
 
         iSimpleDefiSolo(payable(_toContract)).deposit{value: _bal}(_toPoolId,_toExchangeName);
     }
 
     ///@notice Performs common swap function
     ///@param _fromPoolId id of pool to swap from
-    ///@param _toPoolId id of pool to swap to
     ///@param _fromExchangeName name of exchange to lookup in slots
     ///@return _bal the amount of funds to send to the new pool
     ///@return _slot the new slot
 
-    function doSwap(uint64 _fromPoolId, uint64 _toPoolId,string memory _fromExchangeName) private returns (uint, slotsLib.sSlots memory) {
+    function doSwap(uint64 _fromPoolId, string memory _fromExchangeName) private returns (uint, slotsLib.sSlots memory) {
         slotsLib.sSlots memory _slot = getSlot(_fromPoolId, _fromExchangeName);
-        if(_toPoolId == _slot.poolId) revert sdRequiredParameter("New pool required");
                 
         removeLiquidity(_slot);
         revertBalance(_slot);

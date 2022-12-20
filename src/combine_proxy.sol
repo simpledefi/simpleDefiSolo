@@ -96,7 +96,7 @@ contract proxyFactory is Ownable, AccessControl {
 
     event NewProxy(address proxy, address user);
     bytes32 public constant DEPLOYER = keccak256("DEPLOYER");
-
+    event debug(uint _pos);
 
     ///@notice Initialize the proxy factory contract
     ///@param _beacon the address of the beacon contract
@@ -142,9 +142,9 @@ contract proxyFactory is Ownable, AccessControl {
         require(beaconContract != address(0), "Beacon Contract required");
         require(bytes(_exchange).length > 0,"Exchange Name cannot be empty");
         require(_salt > 0, "Salt must be provided");
-
+emit debug(1);
         string memory _contract = prBeacon(beaconContract).getContractType(_exchange,_poolType);
-
+emit debug(2);
         address proxy = deploy(_salt,_poolType);
         proxyContracts[msg.sender].push(address(proxy));
         proxyContractsUsers.push(msg.sender);
