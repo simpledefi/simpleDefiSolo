@@ -5,26 +5,26 @@ import "./Interfaces.sol";
 import "./Storage.sol";
 
 contract combineApp is Storage, Ownable, AccessControl {
-    event sdUintLog( string message, uint value);
-    event sdUintLog( string message, uint[] value);
     event sdDeposit(uint amount);
     event sdHoldBack(uint amount, uint total);
     event sdFeeSent(address _user, bytes16 _type, uint amount,uint total);
-    event sdNewPool(uint64 oldPool, uint newPool);
+    event sdNewPool(uint64 oldPool, string oldExchange, uint newPool, string newExchange, uint amount);
     event sdLiquidityProvided(uint256 farmIn, uint256 wethIn, uint256 lpOut);
     event sdInitialized(uint64 poolId, address lpContract);
     event sdInitialize(uint64 _poolId, address _beacon, string _exchangeName, address _owner);
-    event sdHarvesterAdd(address _harvester);
-    event sdHarvesterRemove(address _harvester);
+    // event sdHarvesterAdd(address _harvester);
+    // event sdHarvesterRemove(address _harvester);
     event sdRescueToken(address _token,uint _amount);
-
+    event sdLiquidated(uint _amount);
+    event sdSetHoldback(uint _holdback);
+    event sdRemoved(uint _removed);
     error sdLocked();
     error sdInitializedError();
     error sdInsufficentBalance();
     error sdRequiredParameter(string param);
     error sdInsufficentFunds();
+    bool bitflip;
 
-    
     modifier lockFunction() {
         if (_locked) revert sdLocked();
         _locked = true;
@@ -33,7 +33,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     }
      
     modifier allowAdmin() {
-        require(hasRole(HARVESTER,msg.sender) || owner() == msg.sender,"Restricted Function");
+        if (!(hasRole(HARVESTER,msg.sender) || owner() == msg.sender)) revert sdLocked();
         _;
     }
     ///@notice Initialize the proxy contract
@@ -62,19 +62,19 @@ contract combineApp is Storage, Ownable, AccessControl {
         emit sdInitialize(_poolId, _beacon,_exchangeName,_owner);
     }
 
-    ///@notice Add harvester permission to contract
-    ///@param _address address of user to add as harvester
-    function addHarvester(address _address) external onlyOwner {
-        _setupRole(HARVESTER,_address);
-        emit sdHarvesterAdd(_address);
-    }
+    // ///@notice Add harvester permission to contract
+    // ///@param _address address of user to add as harvester
+    // function addHarvester(address _address) external onlyOwner {
+    //     _setupRole(HARVESTER,_address);
+    //     emit sdHarvesterAdd(_address);
+    // }
 
-    ///@notice Remove user as harvester
-    ///@param _address address of user to remove as harvester
-    function removeHarvester(address _address) external onlyOwner{
-        revokeRole(HARVESTER,_address);
-        emit sdHarvesterRemove(_address);
-    }
+    // ///@notice Remove user as harvester
+    // ///@param _address address of user to remove as harvester
+    // function removeHarvester(address _address) external onlyOwner{
+    //     revokeRole(HARVESTER,_address);
+    //     emit sdHarvesterRemove(_address);
+    // }
 
     ///@notice create slot for new pool
     ///@param _poolId id of new pool
@@ -117,7 +117,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         
         _slot = slotsLib.swapSlot(_fromPoolId, _fromExchangeName,_toPoolId, _toExchangeName,slots, beaconContract);
         addFunds(_slot,_bal,false);
-        emit sdNewPool(_fromPoolId,_toPoolId);
+        emit sdNewPool(_fromPoolId,_fromExchangeName, _toPoolId,_toExchangeName, _bal);
     }
 
     ///@notice Swap funds from one pool/exchnage to another pool/exchange in a different contract
@@ -188,14 +188,14 @@ contract combineApp is Storage, Ownable, AccessControl {
         _total = sendFee("SOLOLIQUIDATE",_total,0);
 
         payable(owner()).transfer(_total);
-        emit sdUintLog("Liquidate Total",_total);
+        emit sdLiquidated(_total);
     }
     
     ///@notice set holdback on rewards to be sent back to user
     ///@param _holdback amount of rewards to hold back
     function setHoldBack(uint64 _holdback) external onlyOwner {
         holdBack = _holdback;
-        emit sdUintLog("holdback",_holdback);
+        emit sdSetHoldback(_holdback);
     }
     
     ///@notice send holdback funds to user (BNB Balance)
@@ -302,23 +302,19 @@ contract combineApp is Storage, Ownable, AccessControl {
         uint pathLength = (_slot.intermediateToken != address(0) && _token0 != _slot.intermediateToken && _token1 != _slot.intermediateToken) ? 3 : 2;
         address[] memory swapPath = new address[](pathLength);
         
-        if (pathLength == 2) {
-            swapPath[0] = _token0;
-            swapPath[1] = _token1;
-        }
-        else {
-            swapPath[0] = _token0;
+        swapPath[0] = _token0;
+        swapPath[pathLength-1] = _token1;
+        if (pathLength == 3) {
             swapPath[1] = _slot.intermediateToken;
-            swapPath[2] = _token1;
         }
 
         uint _cBalance = address(this).balance;
-        if (swapPath[0] == WBNB_ADDR && swapPath[swapPath.length-1] == WBNB_ADDR) {
+        if (swapPath[0] == WBNB_ADDR && swapPath[pathLength-1] == WBNB_ADDR) {
             if (ERC20(WBNB_ADDR).balanceOf(address(this)) >= amountIn) {
                 iWBNB(WBNB_ADDR).withdraw(amountIn);
                 _cBalance = address(this).balance;
             }
-            if (amountIn > _cBalance) revert sdInsufficentFunds();
+            if (amountIn > address(this).balance) revert sdInsufficentFunds();
             return amountIn;
         }
 
@@ -331,7 +327,7 @@ contract combineApp is Storage, Ownable, AccessControl {
             _cBalance = address(this).balance;
         }
 
-        if (swapPath[swapPath.length - 1] == WBNB_ADDR) {
+        if (swapPath[pathLength - 1] == WBNB_ADDR) {
             amounts = iRouter(_slot.routerContract).swapExactTokensForETH(amountIn, 0,  swapPath, address(this), deadline);
         } else if (swapPath[0] == WBNB_ADDR && _cBalance >= amountIn) {
             amounts = iRouter(_slot.routerContract).swapExactETHForTokens{value: amountIn}(0,swapPath,address(this),deadline);
@@ -339,7 +335,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         else {
             amounts = iRouter(_slot.routerContract).swapExactTokensForTokens(amountIn, 0,swapPath,address(this),deadline);
         }
-        return amounts[swapPath.length-1];
+        return amounts[pathLength-1];
     }
     
 
@@ -352,7 +348,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         pendingCake = pendingReward(_slot);
         if (pendingCake == 0) {
             if (revert_trans == 1) {
-                revert("Nothing to harvest");
+                revert sdInsufficentBalance();
             }
             else {
                     return 0;
@@ -387,7 +383,7 @@ contract combineApp is Storage, Ownable, AccessControl {
         iMasterChef(_slot.chefContract).withdraw(_slot.poolId,_lpBal);
         
         uint _removed = ERC20(_slot.lpContract).balanceOf(address(this));
-        emit sdUintLog("_removed",_removed);
+        emit sdRemoved(_removed);
         
         (address token0,address token1) = _slot.token0==WBNB_ADDR?(_slot.token1,_slot.token0):(_slot.token0,_slot.token1);
 
@@ -418,17 +414,6 @@ contract combineApp is Storage, Ownable, AccessControl {
         }
     }
     
-    ///@notice helper function to force a pool update
-    ///@param _poolId pool to get info from
-    ///@param _exchangeName name of exchange to lookup in slots
-    ///@dev Not part of simpleDefi app, just proxy to ensure proper masterChef and pool Id are called. 
-    ///@dev Does not affect our app in any way, needed for testing.
-    function updatePool(uint64  _poolId, string memory _exchangeName) public {
-        slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
-
-        iMasterChef(_slot.chefContract).updatePool(_slot.poolId);
-    }
-
     ///@notice returns status of pool on specific pool/exchange
     ///@param _poolId pool to get info from
     ///@param _exchangeName name of exchange to lookup in slots
@@ -440,7 +425,7 @@ contract combineApp is Storage, Ownable, AccessControl {
     ///@return total of BNB
     function userInfo(uint64  _poolId, string memory _exchangeName) public view allowAdmin returns (uint,uint,uint,uint,uint,uint) {
         slotsLib.sSlots memory _slot = getSlot(_poolId, _exchangeName);
-
+        // bitflip = !bitflip;
         if (_slot.lpContract == address(0))  return (0,0,0,0,0,0);
         
         (uint a, uint b) = iMasterChef(_slot.chefContract).userInfo(_slot.poolId,address(this));
